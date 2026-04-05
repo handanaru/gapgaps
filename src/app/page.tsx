@@ -138,6 +138,51 @@ export default function Home() {
   const topBinance = binanceInternalOpportunities.slice(0, 15);
   const topCrossExchange = bithumbOkxOpportunities.slice(0, 15);
 
+  const priceMatrixRows = useMemo(() => {
+    if (!usdtKrwRate) return [];
+
+    const binanceMap = new Map(binanceSpotTickers.map((ticker) => [ticker.base, ticker]));
+    const bithumbMap = new Map(bithumbSpotTickers.map((ticker) => [ticker.base, ticker]));
+    const okxMap = new Map(okxSpotTickers.map((ticker) => [ticker.base, ticker]));
+
+    const bases = Array.from(
+      new Set([
+        ...Array.from(bithumbMap.keys()),
+        ...Array.from(okxMap.keys()),
+        ...Array.from(binanceMap.keys()),
+      ])
+    ).sort();
+
+    return bases
+      .map((base) => {
+        const bithumb = bithumbMap.get(base);
+        const okx = okxMap.get(base);
+        const binance = binanceMap.get(base);
+
+        const bithumbKrw = bithumb?.price ?? null;
+        const okxKrw = okx ? okx.price * usdtKrwRate : null;
+        const binanceKrw = binance ? binance.price * usdtKrwRate : null;
+
+        const compared = [bithumbKrw, okxKrw, binanceKrw].filter((value): value is number => value !== null && Number.isFinite(value));
+        if (compared.length < 2) return null;
+
+        const minPrice = Math.min(...compared);
+        const maxPrice = Math.max(...compared);
+        const spreadPct = ((maxPrice - minPrice) / minPrice) * 100;
+
+        return {
+          base,
+          bithumbKrw,
+          okxKrw,
+          binanceKrw,
+          spreadPct,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+      .sort((a, b) => b.spreadPct - a.spreadPct)
+      .slice(0, 25);
+  }, [binanceSpotTickers, bithumbSpotTickers, okxSpotTickers, usdtKrwRate]);
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-8 lg:px-8">
@@ -182,6 +227,51 @@ export default function Home() {
           opportunities={topCrossExchange}
           loading={loading}
         />
+
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-white">Exchange × Coin Price Matrix</h2>
+              <p className="mt-1 text-sm text-slate-400">Bithumb KRW, OKX Spot, Binance Spot 가격을 KRW 기준으로 정렬해 스프레드가 큰 코인을 한눈에 비교합니다.</p>
+            </div>
+            <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300">
+              Top 25 spreads
+            </span>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-white/10">
+            <table className="min-w-full divide-y divide-white/10 text-sm">
+              <thead className="bg-slate-900/70 text-slate-300">
+                <tr>
+                  {["Coin", "Bithumb (KRW)", "OKX (KRW)", "Binance (KRW)", "Spread %"].map((heading) => (
+                    <th key={heading} className="px-4 py-3 text-left font-medium">
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 bg-slate-950/40">
+                {priceMatrixRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                      {loading ? "시장 데이터를 불러오는 중..." : "비교 가능한 가격 데이터가 없습니다."}
+                    </td>
+                  </tr>
+                ) : (
+                  priceMatrixRows.map((row) => (
+                    <tr key={row.base} className="hover:bg-white/5">
+                      <td className="px-4 py-3 font-medium text-white">{row.base}</td>
+                      <td className="px-4 py-3 text-slate-300">{row.bithumbKrw ? formatPrice(row.bithumbKrw) : "-"}</td>
+                      <td className="px-4 py-3 text-slate-300">{row.okxKrw ? formatPrice(row.okxKrw) : "-"}</td>
+                      <td className="px-4 py-3 text-slate-300">{row.binanceKrw ? formatPrice(row.binanceKrw) : "-"}</td>
+                      <td className={`px-4 py-3 font-semibold ${row.spreadPct > 0.5 ? "text-emerald-400" : "text-slate-300"}`}>{formatPct(row.spreadPct)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </main>
   );
