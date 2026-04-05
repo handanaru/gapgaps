@@ -18,9 +18,9 @@ type FxResponse = {
   fetchedAt?: number;
 };
 
-const BINANCE_TAKER_FEE = 0.05;
-const BITHUMB_TAKER_FEE = 0.04;
-const OKX_TAKER_FEE = 0.05;
+const DEFAULT_BINANCE_TAKER_FEE = 0.05;
+const DEFAULT_BITHUMB_TAKER_FEE = 0.04;
+const DEFAULT_OKX_TAKER_FEE = 0.05;
 const POLL_INTERVAL_MS = 3000;
 const ALERT_THRESHOLD_PCT = 1;
 
@@ -49,6 +49,9 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [minSpreadFilter, setMinSpreadFilter] = useState(0.5);
   const [matrixRequireFutures, setMatrixRequireFutures] = useState(true);
+  const [binanceFeePct, setBinanceFeePct] = useState(DEFAULT_BINANCE_TAKER_FEE);
+  const [bithumbFeePct, setBithumbFeePct] = useState(DEFAULT_BITHUMB_TAKER_FEE);
+  const [okxFeePct, setOkxFeePct] = useState(DEFAULT_OKX_TAKER_FEE);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,19 +131,19 @@ export default function Home() {
   }, []);
 
   const binanceInternalOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
-    return calculateArbitrage(binanceSpotTickers, binanceFuturesTickers, BINANCE_TAKER_FEE);
-  }, [binanceSpotTickers, binanceFuturesTickers]);
+    return calculateArbitrage(binanceSpotTickers, binanceFuturesTickers, binanceFeePct);
+  }, [binanceSpotTickers, binanceFuturesTickers, binanceFeePct]);
 
   const bithumbOkxOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
     if (!usdtKrwRate) return [];
     return calculateCrossExchangeArbitrage(bithumbSpotTickers, okxSpotTickers, {
-      leftFeePct: BITHUMB_TAKER_FEE,
-      rightFeePct: OKX_TAKER_FEE,
+      leftFeePct: bithumbFeePct,
+      rightFeePct: okxFeePct,
       rightQuoteToKrw: usdtKrwRate,
       leftLabel: "Bithumb Spot",
       rightLabel: "OKX Spot",
     });
-  }, [bithumbSpotTickers, okxSpotTickers, usdtKrwRate]);
+  }, [bithumbSpotTickers, okxSpotTickers, usdtKrwRate, bithumbFeePct, okxFeePct]);
 
   const topBinance = binanceInternalOpportunities.slice(0, 15);
   const topCrossExchange = bithumbOkxOpportunities.filter((item) => item.gapPct >= minSpreadFilter).slice(0, 15);
@@ -249,6 +252,30 @@ export default function Home() {
             value={topCrossExchange[0] ? formatPct(topCrossExchange[0].estimatedNetPct) : loading ? "..." : "0.000%"}
             hint="Bithumb ↔ OKX 순수익"
           />
+        </section>
+
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Fee Settings</h2>
+              <p className="mt-1 text-sm text-slate-400">거래소별 taker 수수료를 조정하면 순수익 계산이 즉시 반영됩니다.</p>
+            </div>
+            <button
+              className="rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800"
+              onClick={() => {
+                setBinanceFeePct(DEFAULT_BINANCE_TAKER_FEE);
+                setBithumbFeePct(DEFAULT_BITHUMB_TAKER_FEE);
+                setOkxFeePct(DEFAULT_OKX_TAKER_FEE);
+              }}
+            >
+              기본값으로 복원
+            </button>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <FeeInput label="Binance taker" value={binanceFeePct} onChange={setBinanceFeePct} defaultValue={DEFAULT_BINANCE_TAKER_FEE} />
+            <FeeInput label="Bithumb taker" value={bithumbFeePct} onChange={setBithumbFeePct} defaultValue={DEFAULT_BITHUMB_TAKER_FEE} />
+            <FeeInput label="OKX taker" value={okxFeePct} onChange={setOkxFeePct} defaultValue={DEFAULT_OKX_TAKER_FEE} />
+          </div>
         </section>
 
         <section className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/5 p-5 md:flex-row md:items-center md:justify-between">
@@ -442,5 +469,35 @@ function SummaryCard({ label, value, hint }: { label: string; value: string; hin
       <div className="mt-3 text-3xl font-semibold tracking-tight text-white">{value}</div>
       <p className="mt-2 text-xs text-slate-500">{hint}</p>
     </div>
+  );
+}
+
+function FeeInput({
+  label,
+  value,
+  onChange,
+  defaultValue,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  defaultValue: number;
+}) {
+  return (
+    <label className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-300">
+      <div className="font-medium text-white">{label}</div>
+      <div className="mt-1 text-xs text-slate-500">기본값 {defaultValue.toFixed(3)}%</div>
+      <div className="mt-3 flex items-center gap-3">
+        <input
+          type="number"
+          min={0}
+          step={0.001}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none ring-0"
+        />
+        <span className="text-xs text-slate-400">%</span>
+      </div>
+    </label>
   );
 }
