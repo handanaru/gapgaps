@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { normalizeBinanceSpotTicker } from "@/lib/exchanges";
 
-const BINANCE_SPOT_URL = "https://api.binance.com/api/v3/ticker/price";
+const BINANCE_SPOT_URL = "https://api.binance.com/api/v3/ticker/24hr";
 
 export async function GET() {
   try {
@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ success: false, error: `Binance spot fetch failed: ${response.status}` }, { status: 502 });
     }
 
-    const raw = (await response.json()) as { symbol: string; price: string }[];
+    const raw = (await response.json()) as { symbol: string; lastPrice: string; quoteVolume: string }[];
     const data = raw
       .map(normalizeBinanceSpotTicker)
       .filter((item): item is NonNullable<typeof item> => Boolean(item))

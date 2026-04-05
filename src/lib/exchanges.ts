@@ -14,12 +14,22 @@ function splitSymbol(symbol: string) {
   };
 }
 
-export function normalizeBinanceSpotTicker(raw: { symbol: string; price: string }): NormalizedTicker | null {
-  const price = Number(raw.price);
+export function normalizeBinanceSpotTicker(raw: { symbol: string; lastPrice: string; quoteVolume: string }): NormalizedTicker | null {
+  const price = Number(raw.lastPrice);
   if (!raw.symbol || !Number.isFinite(price) || price <= 0) return null;
   const { base, quote } = splitSymbol(raw.symbol);
   if (!quote) return null;
-  return { exchange: "Binance", marketType: "spot", symbol: raw.symbol, base, quote, price, timestamp: Date.now() };
+  const volume24h = Number(raw.quoteVolume);
+  return {
+    exchange: "Binance",
+    marketType: "spot",
+    symbol: raw.symbol,
+    base,
+    quote,
+    price,
+    volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
+    timestamp: Date.now(),
+  };
 }
 
 export function normalizeBinanceFuturesTicker(raw: { symbol: string; price: string }): NormalizedTicker | null {
@@ -30,7 +40,10 @@ export function normalizeBinanceFuturesTicker(raw: { symbol: string; price: stri
   return { exchange: "Binance", marketType: "perp", symbol: raw.symbol, base, quote, price, timestamp: Date.now() };
 }
 
-export function normalizeBithumbSpotTickers(raw: { status: string; data: Record<string, { closing_price: string }> }): NormalizedTicker[] {
+
+export function normalizeBithumbSpotTickers(
+  raw: { status: string; data: Record<string, { closing_price: string; acc_trade_value_24H?: string }> }
+): NormalizedTicker[] {
   if (raw.status !== "0000") return [];
 
   const result: NormalizedTicker[] = [];
@@ -39,6 +52,7 @@ export function normalizeBithumbSpotTickers(raw: { status: string; data: Record<
     if (base === "date") continue;
     const price = Number(value.closing_price);
     if (!Number.isFinite(price) || price <= 0) continue;
+    const volume24h = Number(value.acc_trade_value_24H);
 
     result.push({
       exchange: "Bithumb",
@@ -47,6 +61,7 @@ export function normalizeBithumbSpotTickers(raw: { status: string; data: Record<
       base,
       quote: "KRW",
       price,
+      volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
       timestamp: Date.now(),
     });
   }
@@ -54,7 +69,7 @@ export function normalizeBithumbSpotTickers(raw: { status: string; data: Record<
   return result;
 }
 
-export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instId: string; last: string }> }): NormalizedTicker[] {
+export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instId: string; last: string; volCcy24h?: string }> }): NormalizedTicker[] {
   if (raw.code !== "0") return [];
 
   const result: NormalizedTicker[] = [];
@@ -63,6 +78,7 @@ export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instI
     const [base, quote] = item.instId.split("-");
     const price = Number(item.last);
     if (!base || !quote || !Number.isFinite(price) || price <= 0) continue;
+    const volume24h = Number(item.volCcy24h);
 
     result.push({
       exchange: "OKX",
@@ -71,6 +87,7 @@ export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instI
       base,
       quote,
       price,
+      volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
       timestamp: Date.now(),
     });
   }
@@ -78,7 +95,7 @@ export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instI
   return result;
 }
 
-export function normalizeOkxPerpTickers(raw: { code: string; data: Array<{ instId: string; last: string }> }): NormalizedTicker[] {
+export function normalizeOkxPerpTickers(raw: { code: string; data: Array<{ instId: string; last: string; volCcy24h?: string }> }): NormalizedTicker[] {
   if (raw.code !== "0") return [];
 
   const result: NormalizedTicker[] = [];
@@ -87,6 +104,7 @@ export function normalizeOkxPerpTickers(raw: { code: string; data: Array<{ instI
     const [base, quote] = item.instId.split("-");
     const price = Number(item.last);
     if (!base || !quote || !Number.isFinite(price) || price <= 0) continue;
+    const volume24h = Number(item.volCcy24h);
 
     result.push({
       exchange: "OKX",
@@ -95,6 +113,7 @@ export function normalizeOkxPerpTickers(raw: { code: string; data: Array<{ instI
       base,
       quote,
       price,
+      volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
       timestamp: Date.now(),
     });
   }
