@@ -22,6 +22,7 @@ const BINANCE_TAKER_FEE = 0.05;
 const BITHUMB_TAKER_FEE = 0.04;
 const OKX_TAKER_FEE = 0.05;
 const POLL_INTERVAL_MS = 3000;
+const ALERT_THRESHOLD_PCT = 1;
 
 function formatPrice(value: number) {
   if (value >= 1000) return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -42,6 +43,10 @@ export default function Home() {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(
+    typeof window === "undefined" || !("Notification" in window) ? "unsupported" : Notification.permission
+  );
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,6 +143,32 @@ export default function Home() {
   const topBinance = binanceInternalOpportunities.slice(0, 15);
   const topCrossExchange = bithumbOkxOpportunities.slice(0, 15);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setNotificationPermission("unsupported");
+      return;
+    }
+
+    setNotificationPermission(Notification.permission);
+  }, []);
+
+  useEffect(() => {
+    if (!notificationsEnabled || notificationPermission !== "granted") return;
+    if (topCrossExchange.length === 0) return;
+
+    const top = topCrossExchange[0];
+    if (top.estimatedNetPct < ALERT_THRESHOLD_PCT) return;
+
+    const notificationId = `gapgaps:${top.symbol}:${top.buyExchange}:${top.sellExchange}:${top.estimatedNetPct.toFixed(3)}`;
+    const notified = sessionStorage.getItem(notificationId);
+    if (notified) return;
+
+    sessionStorage.setItem(notificationId, "1");
+    new Notification("GapGaps Opportunity", {
+      body: `${top.symbol} ${top.buyExchange} → ${top.sellExchange} | 예상 순수익 ${top.estimatedNetPct.toFixed(3)}%`,
+    });
+  }, [notificationsEnabled, notificationPermission, topCrossExchange]);
+
   const priceMatrixRows = useMemo(() => {
     if (!usdtKrwRate) return [];
 
@@ -212,6 +243,39 @@ export default function Home() {
             value={topCrossExchange[0] ? formatPct(topCrossExchange[0].estimatedNetPct) : loading ? "..." : "0.000%"}
             hint="Bithumb ↔ OKX 순수익"
           />
+        </section>
+
+        <section className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/5 p-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Browser Alerts</h2>
+            <p className="mt-1 text-sm text-slate-400">예상 순수익이 {ALERT_THRESHOLD_PCT.toFixed(1)}% 이상인 기회가 나오면 브라우저 알림을 보냅니다.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300">
+              Permission: {notificationPermission}
+            </span>
+            <button
+              className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={async () => {
+                if (!("Notification" in window)) {
+                  setNotificationPermission("unsupported");
+                  return;
+                }
+                const permission = await Notification.requestPermission();
+                setNotificationPermission(permission);
+              }}
+              disabled={notificationPermission === "granted" || notificationPermission === "unsupported"}
+            >
+              알림 권한 요청
+            </button>
+            <button
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${notificationsEnabled ? "bg-emerald-500 text-white hover:bg-emerald-400" : "border border-white/10 bg-slate-900/80 text-slate-200 hover:bg-slate-800"}`}
+              onClick={() => setNotificationsEnabled((prev) => !prev)}
+              disabled={notificationPermission !== "granted"}
+            >
+              {notificationsEnabled ? "알림 켜짐" : "알림 꺼짐"}
+            </button>
+          </div>
         </section>
 
         <OpportunitySection
