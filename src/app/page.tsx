@@ -47,6 +47,8 @@ export default function Home() {
     typeof window === "undefined" || !("Notification" in window) ? "unsupported" : Notification.permission
   );
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [minSpreadFilter, setMinSpreadFilter] = useState(0.5);
+  const [matrixRequireFutures, setMatrixRequireFutures] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -141,7 +143,7 @@ export default function Home() {
   }, [bithumbSpotTickers, okxSpotTickers, usdtKrwRate]);
 
   const topBinance = binanceInternalOpportunities.slice(0, 15);
-  const topCrossExchange = bithumbOkxOpportunities.slice(0, 15);
+  const topCrossExchange = bithumbOkxOpportunities.filter((item) => item.gapPct >= minSpreadFilter).slice(0, 15);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) {
@@ -173,6 +175,7 @@ export default function Home() {
     if (!usdtKrwRate) return [];
 
     const binanceMap = new Map(binanceSpotTickers.map((ticker) => [ticker.base, ticker]));
+    const binanceFuturesBaseSet = new Set(binanceFuturesTickers.map((ticker) => ticker.base));
     const bithumbMap = new Map(bithumbSpotTickers.map((ticker) => [ticker.base, ticker]));
     const okxMap = new Map(okxSpotTickers.map((ticker) => [ticker.base, ticker]));
 
@@ -186,6 +189,8 @@ export default function Home() {
 
     return bases
       .map((base) => {
+        if (matrixRequireFutures && !binanceFuturesBaseSet.has(base)) return null;
+
         const bithumb = bithumbMap.get(base);
         const okx = okxMap.get(base);
         const binance = binanceMap.get(base);
@@ -210,9 +215,10 @@ export default function Home() {
         };
       })
       .filter((row): row is NonNullable<typeof row> => row !== null)
+      .filter((row) => row.spreadPct >= minSpreadFilter)
       .sort((a, b) => b.spreadPct - a.spreadPct)
       .slice(0, 25);
-  }, [binanceSpotTickers, bithumbSpotTickers, okxSpotTickers, usdtKrwRate]);
+  }, [binanceSpotTickers, binanceFuturesTickers, bithumbSpotTickers, okxSpotTickers, usdtKrwRate, minSpreadFilter, matrixRequireFutures]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
@@ -280,27 +286,52 @@ export default function Home() {
 
         <OpportunitySection
           title="Binance Spot vs Futures"
-          description="같은 거래소 내 Spot/Futures 가격 차이를 기준으로 추정 순수익을 계산합니다."
+          description="같은 거래소 내에서 선물이 실제 존재하는 심볼만 대상으로 Spot/Futures 가격 차이를 계산합니다. 출금·슬리피지·펀딩비는 아직 포함하지 않은 참고용 테이블입니다."
           opportunities={topBinance}
           loading={loading}
         />
 
         <OpportunitySection
           title="Bithumb KRW vs OKX Spot"
-          description="Bithumb KRW 현물과 OKX 현물을 USDT/KRW 환산 기준으로 비교해 김프/역프 관점 기회를 보여줍니다."
+          description="Bithumb KRW 현물과 OKX 현물을 USDT/KRW 환산 기준으로 비교한 참고용 테이블입니다. 실제 송금/환전/출금 비용은 포함하지 않아 실거래 수익과 다를 수 있습니다."
           opportunities={topCrossExchange}
           loading={loading}
         />
 
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-white">Exchange × Coin Price Matrix</h2>
-              <p className="mt-1 text-sm text-slate-400">Bithumb KRW, OKX Spot, Binance Spot 가격을 KRW 기준으로 정렬해 스프레드가 큰 코인을 한눈에 비교합니다.</p>
+              <p className="mt-1 text-sm text-slate-400">Bithumb KRW, OKX Spot, Binance Spot 가격을 KRW 기준으로 비교하는 참고용 가격표입니다. 옵션으로 선물 존재 코인만 보거나 최소 스프레드 이상만 볼 수 있습니다.</p>
             </div>
-            <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300">
-              Top 25 spreads
-            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={matrixRequireFutures}
+                  onChange={(event) => setMatrixRequireFutures(event.target.checked)}
+                  className="accent-cyan-400"
+                />
+                Futures 있는 코인만
+              </label>
+              <label className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-300">
+                최소 스프레드
+                <select
+                  value={minSpreadFilter}
+                  onChange={(event) => setMinSpreadFilter(Number(event.target.value))}
+                  className="rounded-md border border-white/10 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+                >
+                  <option value={0}>0%</option>
+                  <option value={0.1}>0.1%</option>
+                  <option value={0.3}>0.3%</option>
+                  <option value={0.5}>0.5%</option>
+                  <option value={1}>1.0%</option>
+                </select>
+              </label>
+              <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300">
+                Top 25 spreads
+              </span>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/10">
