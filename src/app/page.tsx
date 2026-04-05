@@ -39,6 +39,7 @@ export default function Home() {
   const [binanceFuturesTickers, setBinanceFuturesTickers] = useState<NormalizedTicker[]>([]);
   const [bithumbSpotTickers, setBithumbSpotTickers] = useState<NormalizedTicker[]>([]);
   const [okxSpotTickers, setOkxSpotTickers] = useState<NormalizedTicker[]>([]);
+  const [okxPerpTickers, setOkxPerpTickers] = useState<NormalizedTicker[]>([]);
   const [usdtKrwRate, setUsdtKrwRate] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,32 +59,36 @@ export default function Home() {
 
     const poll = async () => {
       try {
-        const [binanceSpotRes, binanceFuturesRes, bithumbRes, okxRes, fxRes] = await Promise.all([
+        const [binanceSpotRes, binanceFuturesRes, bithumbRes, okxRes, okxPerpRes, fxRes] = await Promise.all([
           fetch("/api/binance/spot"),
           fetch("/api/binance/futures"),
           fetch("/api/bithumb/spot"),
           fetch("/api/okx/spot"),
+          fetch("/api/okx/perp"),
           fetch("/api/fx/usdt-krw"),
         ]);
 
-        const [binanceSpotJson, binanceFuturesJson, bithumbJson, okxJson, fxJson] = (await Promise.all([
+        const [binanceSpotJson, binanceFuturesJson, bithumbJson, okxJson, okxPerpJson, fxJson] = (await Promise.all([
           binanceSpotRes.json(),
           binanceFuturesRes.json(),
           bithumbRes.json(),
           okxRes.json(),
+          okxPerpRes.json(),
           fxRes.json(),
-        ])) as [ApiResponse, ApiResponse, ApiResponse, ApiResponse, FxResponse];
+        ])) as [ApiResponse, ApiResponse, ApiResponse, ApiResponse, ApiResponse, FxResponse];
 
         if (
           !binanceSpotJson.success ||
           !binanceFuturesJson.success ||
           !bithumbJson.success ||
           !okxJson.success ||
+          !okxPerpJson.success ||
           !fxJson.success ||
           !binanceSpotJson.data ||
           !binanceFuturesJson.data ||
           !bithumbJson.data ||
           !okxJson.data ||
+          !okxPerpJson.data ||
           !fxJson.data
         ) {
           throw new Error(
@@ -91,6 +96,7 @@ export default function Home() {
               binanceFuturesJson.error ||
               bithumbJson.error ||
               okxJson.error ||
+              okxPerpJson.error ||
               fxJson.error ||
               "Failed to fetch market data"
           );
@@ -101,6 +107,7 @@ export default function Home() {
           setBinanceFuturesTickers(binanceFuturesJson.data);
           setBithumbSpotTickers(bithumbJson.data);
           setOkxSpotTickers(okxJson.data);
+          setOkxPerpTickers(okxPerpJson.data);
           setUsdtKrwRate(fxJson.data.rate);
           setLastUpdated(
             Math.max(
@@ -108,6 +115,7 @@ export default function Home() {
               binanceFuturesJson.fetchedAt ?? 0,
               bithumbJson.fetchedAt ?? 0,
               okxJson.fetchedAt ?? 0,
+              okxPerpJson.fetchedAt ?? 0,
               fxJson.fetchedAt ?? 0
             )
           );
@@ -145,7 +153,12 @@ export default function Home() {
     });
   }, [bithumbSpotTickers, okxSpotTickers, usdtKrwRate, bithumbFeePct, okxFeePct]);
 
+  const okxInternalOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
+    return calculateArbitrage(okxSpotTickers, okxPerpTickers, okxFeePct);
+  }, [okxSpotTickers, okxPerpTickers, okxFeePct]);
+
   const topBinance = binanceInternalOpportunities.slice(0, 15);
+  const topOkx = okxInternalOpportunities.slice(0, 15);
   const topCrossExchange = bithumbOkxOpportunities.filter((item) => item.gapPct >= minSpreadFilter).slice(0, 15);
 
   useEffect(() => {
@@ -248,9 +261,9 @@ export default function Home() {
           <SummaryCard label="Bithumb KRW" value={bithumbSpotTickers.length.toLocaleString()} hint="KRW 현물" />
           <SummaryCard label="OKX Spot" value={okxSpotTickers.length.toLocaleString()} hint="USDT 기준 비교" />
           <SummaryCard
-            label="Cross Exchange Top"
-            value={topCrossExchange[0] ? formatPct(topCrossExchange[0].estimatedNetPct) : loading ? "..." : "0.000%"}
-            hint="Bithumb ↔ OKX 순수익"
+            label="OKX Spot vs Perp"
+            value={topOkx[0] ? formatPct(topOkx[0].estimatedNetPct) : loading ? "..." : "0.000%"}
+            hint="OKX 내부 순수익"
           />
         </section>
 
@@ -315,6 +328,13 @@ export default function Home() {
           title="Binance Spot vs Futures"
           description="같은 거래소 내에서 선물이 실제 존재하는 심볼만 대상으로 Spot/Futures 가격 차이를 계산합니다. 출금·슬리피지·펀딩비는 아직 포함하지 않은 참고용 테이블입니다."
           opportunities={topBinance}
+          loading={loading}
+        />
+
+        <OpportunitySection
+          title="OKX Spot vs Perp"
+          description="OKX 현물과 OKX 스왑(Perp) 가격 차이를 기준으로 추정 순수익을 계산합니다. 펀딩비와 슬리피지는 아직 포함하지 않은 참고용 테이블입니다."
+          opportunities={topOkx}
           loading={loading}
         />
 

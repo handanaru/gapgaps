@@ -78,6 +78,30 @@ export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instI
   return result;
 }
 
+export function normalizeOkxPerpTickers(raw: { code: string; data: Array<{ instId: string; last: string }> }): NormalizedTicker[] {
+  if (raw.code !== "0") return [];
+
+  const result: NormalizedTicker[] = [];
+
+  for (const item of raw.data) {
+    const [base, quote] = item.instId.split("-");
+    const price = Number(item.last);
+    if (!base || !quote || !Number.isFinite(price) || price <= 0) continue;
+
+    result.push({
+      exchange: "OKX",
+      marketType: "perp",
+      symbol: `${base}${quote}`,
+      base,
+      quote,
+      price,
+      timestamp: Date.now(),
+    });
+  }
+
+  return result;
+}
+
 export function calculateArbitrage(spotTickers: NormalizedTicker[], futuresTickers: NormalizedTicker[], feePct = 0.05) {
   const futuresMap = new Map(futuresTickers.map((ticker) => [ticker.symbol, ticker]));
 
