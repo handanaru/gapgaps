@@ -24,6 +24,14 @@ const DEFAULT_OKX_TAKER_FEE = 0.05;
 const POLL_INTERVAL_MS = 3000;
 const ALERT_THRESHOLD_PCT = 1;
 
+// min volume options in USDT (Bithumb KRW volumes are converted at current FX rate)
+const MIN_VOLUME_OPTIONS = [
+  { label: "제한 없음", value: 0 },
+  { label: "10만 USDT", value: 100_000 },
+  { label: "100만 USDT", value: 1_000_000 },
+  { label: "1000만 USDT", value: 10_000_000 },
+];
+
 function formatPrice(value: number) {
   if (value >= 1000) return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
   if (value >= 1) return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
@@ -53,6 +61,8 @@ export default function Home() {
   const [binanceFeePct, setBinanceFeePct] = useState(DEFAULT_BINANCE_TAKER_FEE);
   const [bithumbFeePct, setBithumbFeePct] = useState(DEFAULT_BITHUMB_TAKER_FEE);
   const [okxFeePct, setOkxFeePct] = useState(DEFAULT_OKX_TAKER_FEE);
+  const [minVolumeUsdt, setMinVolumeUsdt] = useState(0);
+  const [countdown, setCountdown] = useState(POLL_INTERVAL_MS / 1000);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,20 +148,54 @@ export default function Home() {
     };
   }, []);
 
+  // Reset countdown whenever data refreshes
+  useEffect(() => {
+    setCountdown(POLL_INTERVAL_MS / 1000);
+  }, [lastUpdated]);
+
+  // Tick down every second
+  useEffect(() => {
+    const timer = setInterval(() => setCountdown((prev) => Math.max(0, prev - 1)), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const binanceInternalOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
     return calculateArbitrage(binanceSpotTickers, binanceFuturesTickers, binanceFeePct);
   }, [binanceSpotTickers, binanceFuturesTickers, binanceFeePct]);
 
   const bithumbOkxOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
     if (!usdtKrwRate) return [];
-    return calculateCrossExchangeArbitrage(bithumbSpotTickers, okxSpotTickers, {
+    const filteredBithumb = minVolumeUsdt > 0
+      ? bithumbSpotTickers.filter((t) => t.volume24h !== undefined && t.volume24h / usdtKrwRate >= minVolumeUsdt)
+      : bithumbSpotTickers;
+    const filteredOkx = minVolumeUsdt > 0
+      ? okxSpotTickers.filter((t) => t.volume24h !== undefined && t.volume24h >= minVolumeUsdt)
+      : okxSpotTickers;
+    return calculateCrossExchangeArbitrage(filteredBithumb, filteredOkx, {
       leftFeePct: bithumbFeePct,
       rightFeePct: okxFeePct,
       rightQuoteToKrw: usdtKrwRate,
       leftLabel: "Bithumb Spot",
       rightLabel: "OKX Spot",
     });
-  }, [bithumbSpotTickers, okxSpotTickers, usdtKrwRate, bithumbFeePct, okxFeePct]);
+  }, [bithumbSpotTickers, okxSpotTickers, usdtKrwRate, bithumbFeePct, okxFeePct, minVolumeUsdt]);
+
+  const bithumbBinanceOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
+    if (!usdtKrwRate) return [];
+    const filteredBithumb = minVolumeUsdt > 0
+      ? bithumbSpotTickers.filter((t) => t.volume24h !== undefined && t.volume24h / usdtKrwRate >= minVolumeUsdt)
+      : bithumbSpotTickers;
+    const filteredBinance = minVolumeUsdt > 0
+      ? binanceSpotTickers.filter((t) => t.volume24h !== undefined && t.volume24h >= minVolumeUsdt)
+      : binanceSpotTickers;
+    return calculateCrossExchangeArbitrage(filteredBithumb, filteredBinance, {
+      leftFeePct: bithumbFeePct,
+      rightFeePct: binanceFeePct,
+      rightQuoteToKrw: usdtKrwRate,
+      leftLabel: "Bithumb Spot",
+      rightLabel: "Binance Spot",
+    });
+  }, [bithumbSpotTickers, binanceSpotTickers, usdtKrwRate, bithumbFeePct, binanceFeePct, minVolumeUsdt]);
 
   const okxInternalOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
     return calculateArbitrage(okxSpotTickers, okxPerpTickers, okxFeePct);
@@ -160,6 +204,7 @@ export default function Home() {
   const topBinance = binanceInternalOpportunities.slice(0, 15);
   const topOkx = okxInternalOpportunities.slice(0, 15);
   const topCrossExchange = bithumbOkxOpportunities.filter((item) => item.gapPct >= minSpreadFilter).slice(0, 15);
+  const topBithumbBinance = bithumbBinanceOpportunities.filter((item) => item.gapPct >= minSpreadFilter).slice(0, 15);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) {
@@ -251,27 +296,45 @@ export default function Home() {
             <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
               <div>{lastUpdated ? `마지막 업데이트: ${new Date(lastUpdated).toLocaleTimeString()}` : "데이터를 불러오는 중..."}</div>
               <div className="mt-1 text-xs text-cyan-200/80">USDT/KRW: {usdtKrwRate ? formatPrice(usdtKrwRate) : "-"}</div>
+              <div className="mt-1 flex items-center gap-1.5 text-xs text-cyan-300/70">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                다음 갱신까지 {countdown}초
+              </div>
             </div>
           </div>
           {error && <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">오류: {error}</div>}
         </header>
 
-        <section className="grid gap-4 md:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard label="Binance Spot" value={binanceSpotTickers.length.toLocaleString()} hint="USDT 마켓 기준" />
           <SummaryCard label="Bithumb KRW" value={bithumbSpotTickers.length.toLocaleString()} hint="KRW 현물" />
           <SummaryCard label="OKX Spot" value={okxSpotTickers.length.toLocaleString()} hint="USDT 기준 비교" />
           <SummaryCard
-            label="OKX Spot vs Perp"
-            value={topOkx[0] ? formatPct(topOkx[0].estimatedNetPct) : loading ? "..." : "0.000%"}
-            hint="OKX 내부 순수익"
+            label="Best Cross-Exchange"
+            value={
+              topBithumbBinance[0]
+                ? formatPct(topBithumbBinance[0].estimatedNetPct)
+                : topCrossExchange[0]
+                  ? formatPct(topCrossExchange[0].estimatedNetPct)
+                  : loading
+                    ? "..."
+                    : "0.000%"
+            }
+            hint={
+              topBithumbBinance[0]
+                ? `${topBithumbBinance[0].symbol} (Bithumb↔Binance)`
+                : topCrossExchange[0]
+                  ? `${topCrossExchange[0].symbol} (Bithumb↔OKX)`
+                  : "크로스 거래소 최고 순수익"
+            }
           />
         </section>
 
         <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
           <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-white">Fee Settings</h2>
-              <p className="mt-1 text-sm text-slate-400">거래소별 taker 수수료를 조정하면 순수익 계산이 즉시 반영됩니다.</p>
+              <h2 className="text-lg font-semibold text-white">Fee &amp; Filter Settings</h2>
+              <p className="mt-1 text-sm text-slate-400">거래소별 taker 수수료와 최소 거래량 필터를 조정하면 기회 목록이 즉시 반영됩니다.</p>
             </div>
             <button
               className="rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800"
@@ -279,6 +342,7 @@ export default function Home() {
                 setBinanceFeePct(DEFAULT_BINANCE_TAKER_FEE);
                 setBithumbFeePct(DEFAULT_BITHUMB_TAKER_FEE);
                 setOkxFeePct(DEFAULT_OKX_TAKER_FEE);
+                setMinVolumeUsdt(0);
               }}
             >
               기본값으로 복원
@@ -288,6 +352,19 @@ export default function Home() {
             <FeeInput label="Binance taker" value={binanceFeePct} onChange={setBinanceFeePct} defaultValue={DEFAULT_BINANCE_TAKER_FEE} />
             <FeeInput label="Bithumb taker" value={bithumbFeePct} onChange={setBithumbFeePct} defaultValue={DEFAULT_BITHUMB_TAKER_FEE} />
             <FeeInput label="OKX taker" value={okxFeePct} onChange={setOkxFeePct} defaultValue={DEFAULT_OKX_TAKER_FEE} />
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <span className="text-xs font-medium text-slate-400">최소 24h 거래량 (크로스 거래소)</span>
+            <select
+              value={minVolumeUsdt}
+              onChange={(e) => setMinVolumeUsdt(Number(e.target.value))}
+              className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none"
+            >
+              {MIN_VOLUME_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <span className="text-xs text-slate-500">※ Bithumb KRW 거래량은 현재 FX 레이트로 환산</span>
           </div>
         </section>
 
@@ -342,6 +419,13 @@ export default function Home() {
           title="Bithumb KRW vs OKX Spot"
           description="Bithumb KRW 현물과 OKX 현물을 USDT/KRW 환산 기준으로 비교한 참고용 테이블입니다. 실제 송금/환전/출금 비용은 포함하지 않아 실거래 수익과 다를 수 있습니다."
           opportunities={topCrossExchange}
+          loading={loading}
+        />
+
+        <OpportunitySection
+          title="Bithumb KRW vs Binance Spot"
+          description="Bithumb KRW 현물과 Binance USDT 현물을 USDT/KRW 환산 기준으로 비교합니다. 김치 프리미엄 방향과 크기를 파악하는 데 활용하세요. 송금·환전·출금 비용은 미포함입니다."
+          opportunities={topBithumbBinance}
           loading={loading}
         />
 

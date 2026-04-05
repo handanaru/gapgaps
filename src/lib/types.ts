@@ -7,6 +7,7 @@ export type NormalizedTicker = {
   base: string;
   quote: string;
   price: number;
+  volume24h?: number; // in quote currency (KRW for Bithumb, USDT for Binance/OKX)
   timestamp: number;
 };
 
