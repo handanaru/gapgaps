@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { normalizeBinanceFuturesTicker } from "@/lib/binance";
+import { normalizeBinanceFuturesTicker } from "@/lib/exchanges";
 
 const BINANCE_FUTURES_URL = "https://fapi.binance.com/fapi/v1/ticker/price";
 

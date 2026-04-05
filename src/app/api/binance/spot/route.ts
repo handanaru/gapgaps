@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { normalizeBinanceSpotTicker } from "@/lib/binance";
+import { normalizeBinanceSpotTicker } from "@/lib/exchanges";
 
 const BINANCE_SPOT_URL = "https://api.binance.com/api/v3/ticker/price";
 

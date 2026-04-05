@@ -12,8 +12,10 @@ export type NormalizedTicker = {
 
 export type ArbitrageOpportunity = {
   symbol: string;
-  spotPrice: number;
-  futuresPrice: number;
+  buyExchange: string;
+  sellExchange: string;
+  buyPrice: number;
+  sellPrice: number;
   gapPct: number;
   estimatedNetPct: number;
   longLeg: string;
