@@ -150,6 +150,88 @@ export function normalizeOkxPerpTickers(raw: { code: string; data: Array<{ instI
   return result;
 }
 
+export function normalizeBybitSpotTickers(
+  raw: {
+    retCode: number;
+    result?: {
+      list?: Array<{
+        symbol: string;
+        lastPrice: string;
+        bid1Price?: string;
+        ask1Price?: string;
+        turnover24h?: string;
+      }>;
+    };
+  }
+): NormalizedTicker[] {
+  if (raw.retCode !== 0) return [];
+
+  const result: NormalizedTicker[] = [];
+
+  for (const item of raw.result?.list ?? []) {
+    const price = Number(item.lastPrice);
+    if (!item.symbol || !Number.isFinite(price) || price <= 0) continue;
+    const { base, quote } = splitSymbol(item.symbol);
+    if (quote !== "USDT") continue;
+
+    const volume24h = Number(item.turnover24h);
+    const bidPrice = Number(item.bid1Price);
+    const askPrice = Number(item.ask1Price);
+
+    result.push({
+      exchange: "Bybit",
+      marketType: "spot",
+      symbol: item.symbol,
+      base,
+      quote,
+      price,
+      bidPrice: Number.isFinite(bidPrice) && bidPrice > 0 ? bidPrice : undefined,
+      askPrice: Number.isFinite(askPrice) && askPrice > 0 ? askPrice : undefined,
+      volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
+      timestamp: Date.now(),
+    });
+  }
+
+  return result;
+}
+
+export function normalizeGateIoSpotTickers(
+  raw: Array<{
+    currency_pair: string;
+    last: string;
+    highest_bid?: string;
+    lowest_ask?: string;
+    quote_volume?: string;
+  }>
+): NormalizedTicker[] {
+  const result: NormalizedTicker[] = [];
+
+  for (const item of raw) {
+    const [base, quote] = item.currency_pair.split("_");
+    const price = Number(item.last);
+    if (!base || quote !== "USDT" || !Number.isFinite(price) || price <= 0) continue;
+
+    const volume24h = Number(item.quote_volume);
+    const bidPrice = Number(item.highest_bid);
+    const askPrice = Number(item.lowest_ask);
+
+    result.push({
+      exchange: "Gate.io",
+      marketType: "spot",
+      symbol: `${base}${quote}`,
+      base,
+      quote,
+      price,
+      bidPrice: Number.isFinite(bidPrice) && bidPrice > 0 ? bidPrice : undefined,
+      askPrice: Number.isFinite(askPrice) && askPrice > 0 ? askPrice : undefined,
+      volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
+      timestamp: Date.now(),
+    });
+  }
+
+  return result;
+}
+
 function getExecutableBuyPrice(ticker: NormalizedTicker, quoteToKrw = 1) {
   return (ticker.askPrice ?? ticker.price) * (ticker.quote === "KRW" ? 1 : quoteToKrw);
 }

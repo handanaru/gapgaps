@@ -28,11 +28,10 @@ export async function GET() {
     const info = (await infoRes.json()) as { symbols: { symbol: string; status: string; contractType: string }[] };
     const bookMap = new Map(book.map((item) => [item.symbol, item]));
 
-    // Only keep PERPETUAL contracts currently in TRADING status
     const activeSymbols = new Set(
       info.symbols
-        .filter((s) => s.status === "TRADING" && s.contractType === "PERPETUAL")
-        .map((s) => s.symbol)
+        .filter((symbol) => symbol.status === "TRADING" && symbol.contractType === "PERPETUAL")
+        .map((symbol) => symbol.symbol)
     );
 
     const data = raw
