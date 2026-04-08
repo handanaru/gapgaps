@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { normalizeOkxPerpTickers } from "@/lib/exchanges";
 
 const OKX_PERP_URL = "https://www.okx.com/api/v5/market/tickers?instType=SWAP";
@@ -14,8 +14,8 @@ export async function GET() {
       return NextResponse.json({ success: false, error: `OKX perp fetch failed: ${response.status}` }, { status: 502 });
     }
 
-    const raw = (await response.json()) as { code: string; data: Array<{ instId: string; last: string }> };
-    const data = normalizeOkxPerpTickers(raw);
+    const raw = (await response.json()) as { code: string; data: Array<{ instId: string; last: string; bidPx?: string; askPx?: string; volCcy24h?: string }> };
+    const data = normalizeOkxPerpTickers(raw).filter((item) => item.quote === "USDT");
 
     return NextResponse.json({
       success: true,

@@ -14,12 +14,14 @@ function splitSymbol(symbol: string) {
   };
 }
 
-export function normalizeBinanceSpotTicker(raw: { symbol: string; lastPrice: string; quoteVolume: string }): NormalizedTicker | null {
+export function normalizeBinanceSpotTicker(raw: { symbol: string; lastPrice: string; bidPrice?: string; askPrice?: string; quoteVolume: string }): NormalizedTicker | null {
   const price = Number(raw.lastPrice);
   if (!raw.symbol || !Number.isFinite(price) || price <= 0) return null;
   const { base, quote } = splitSymbol(raw.symbol);
   if (!quote) return null;
   const volume24h = Number(raw.quoteVolume);
+  const bidPrice = Number(raw.bidPrice);
+  const askPrice = Number(raw.askPrice);
   return {
     exchange: "Binance",
     marketType: "spot",
@@ -27,22 +29,37 @@ export function normalizeBinanceSpotTicker(raw: { symbol: string; lastPrice: str
     base,
     quote,
     price,
+    bidPrice: Number.isFinite(bidPrice) && bidPrice > 0 ? bidPrice : undefined,
+    askPrice: Number.isFinite(askPrice) && askPrice > 0 ? askPrice : undefined,
     volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
     timestamp: Date.now(),
   };
 }
 
-export function normalizeBinanceFuturesTicker(raw: { symbol: string; price: string }): NormalizedTicker | null {
+export function normalizeBinanceFuturesTicker(raw: { symbol: string; price: string; bidPrice?: string; askPrice?: string }): NormalizedTicker | null {
   const price = Number(raw.price);
   if (!raw.symbol || !Number.isFinite(price) || price <= 0) return null;
   const { base, quote } = splitSymbol(raw.symbol);
   if (!quote) return null;
-  return { exchange: "Binance", marketType: "perp", symbol: raw.symbol, base, quote, price, timestamp: Date.now() };
+  const bidPrice = Number(raw.bidPrice);
+  const askPrice = Number(raw.askPrice);
+  return {
+    exchange: "Binance",
+    marketType: "perp",
+    symbol: raw.symbol,
+    base,
+    quote,
+    price,
+    bidPrice: Number.isFinite(bidPrice) && bidPrice > 0 ? bidPrice : undefined,
+    askPrice: Number.isFinite(askPrice) && askPrice > 0 ? askPrice : undefined,
+    timestamp: Date.now(),
+  };
 }
 
 
 export function normalizeBithumbSpotTickers(
-  raw: { status: string; data: Record<string, { closing_price: string; acc_trade_value_24H?: string }> }
+  raw: { status: string; data: Record<string, { closing_price: string; acc_trade_value_24H?: string }> },
+  orderbook?: Record<string, { bids?: Array<{ price: string }>; asks?: Array<{ price: string }> }>
 ): NormalizedTicker[] {
   if (raw.status !== "0000") return [];
 
@@ -53,6 +70,8 @@ export function normalizeBithumbSpotTickers(
     const price = Number(value.closing_price);
     if (!Number.isFinite(price) || price <= 0) continue;
     const volume24h = Number(value.acc_trade_value_24H);
+    const bestBid = Number(orderbook?.[base]?.bids?.[0]?.price);
+    const bestAsk = Number(orderbook?.[base]?.asks?.[0]?.price);
 
     result.push({
       exchange: "Bithumb",
@@ -61,6 +80,8 @@ export function normalizeBithumbSpotTickers(
       base,
       quote: "KRW",
       price,
+      bidPrice: Number.isFinite(bestBid) && bestBid > 0 ? bestBid : undefined,
+      askPrice: Number.isFinite(bestAsk) && bestAsk > 0 ? bestAsk : undefined,
       volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
       timestamp: Date.now(),
     });
@@ -69,7 +90,7 @@ export function normalizeBithumbSpotTickers(
   return result;
 }
 
-export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instId: string; last: string; volCcy24h?: string }> }): NormalizedTicker[] {
+export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instId: string; last: string; bidPx?: string; askPx?: string; volCcy24h?: string }> }): NormalizedTicker[] {
   if (raw.code !== "0") return [];
 
   const result: NormalizedTicker[] = [];
@@ -79,6 +100,8 @@ export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instI
     const price = Number(item.last);
     if (!base || !quote || !Number.isFinite(price) || price <= 0) continue;
     const volume24h = Number(item.volCcy24h);
+    const bidPrice = Number(item.bidPx);
+    const askPrice = Number(item.askPx);
 
     result.push({
       exchange: "OKX",
@@ -87,6 +110,8 @@ export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instI
       base,
       quote,
       price,
+      bidPrice: Number.isFinite(bidPrice) && bidPrice > 0 ? bidPrice : undefined,
+      askPrice: Number.isFinite(askPrice) && askPrice > 0 ? askPrice : undefined,
       volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
       timestamp: Date.now(),
     });
@@ -95,7 +120,7 @@ export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instI
   return result;
 }
 
-export function normalizeOkxPerpTickers(raw: { code: string; data: Array<{ instId: string; last: string; volCcy24h?: string }> }): NormalizedTicker[] {
+export function normalizeOkxPerpTickers(raw: { code: string; data: Array<{ instId: string; last: string; bidPx?: string; askPx?: string; volCcy24h?: string }> }): NormalizedTicker[] {
   if (raw.code !== "0") return [];
 
   const result: NormalizedTicker[] = [];
@@ -105,6 +130,8 @@ export function normalizeOkxPerpTickers(raw: { code: string; data: Array<{ instI
     const price = Number(item.last);
     if (!base || !quote || !Number.isFinite(price) || price <= 0) continue;
     const volume24h = Number(item.volCcy24h);
+    const bidPrice = Number(item.bidPx);
+    const askPrice = Number(item.askPx);
 
     result.push({
       exchange: "OKX",
@@ -113,12 +140,22 @@ export function normalizeOkxPerpTickers(raw: { code: string; data: Array<{ instI
       base,
       quote,
       price,
+      bidPrice: Number.isFinite(bidPrice) && bidPrice > 0 ? bidPrice : undefined,
+      askPrice: Number.isFinite(askPrice) && askPrice > 0 ? askPrice : undefined,
       volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
       timestamp: Date.now(),
     });
   }
 
   return result;
+}
+
+function getExecutableBuyPrice(ticker: NormalizedTicker, quoteToKrw = 1) {
+  return (ticker.askPrice ?? ticker.price) * (ticker.quote === "KRW" ? 1 : quoteToKrw);
+}
+
+function getExecutableSellPrice(ticker: NormalizedTicker, quoteToKrw = 1) {
+  return (ticker.bidPrice ?? ticker.price) * (ticker.quote === "KRW" ? 1 : quoteToKrw);
 }
 
 export function calculateArbitrage(spotTickers: NormalizedTicker[], futuresTickers: NormalizedTicker[], feePct = 0.05) {
@@ -130,19 +167,24 @@ export function calculateArbitrage(spotTickers: NormalizedTicker[], futuresTicke
     const perp = futuresMap.get(spot.symbol);
     if (!perp) continue;
 
-    const gapPct = ((perp.price - spot.price) / spot.price) * 100;
+    const positiveExecutableGapPct = ((getExecutableSellPrice(perp) - getExecutableBuyPrice(spot)) / getExecutableBuyPrice(spot)) * 100;
+    const negativeExecutableGapPct = ((getExecutableSellPrice(spot) - getExecutableBuyPrice(perp)) / getExecutableBuyPrice(perp)) * 100;
+    const buyingSpot = positiveExecutableGapPct >= negativeExecutableGapPct;
+    const gapPct = buyingSpot ? positiveExecutableGapPct : -negativeExecutableGapPct;
+    const referenceGapPct = ((perp.price - spot.price) / spot.price) * 100;
     const estimatedNetPct = Math.abs(gapPct) - feePct;
 
     opportunities.push({
       symbol: spot.symbol,
-      buyExchange: gapPct >= 0 ? "Binance Spot" : "Binance Futures",
-      sellExchange: gapPct >= 0 ? "Binance Futures" : "Binance Spot",
-      buyPrice: gapPct >= 0 ? spot.price : perp.price,
-      sellPrice: gapPct >= 0 ? perp.price : spot.price,
+      buyExchange: buyingSpot ? "Binance Spot" : "Binance Futures",
+      sellExchange: buyingSpot ? "Binance Futures" : "Binance Spot",
+      buyPrice: buyingSpot ? getExecutableBuyPrice(spot) : getExecutableBuyPrice(perp),
+      sellPrice: buyingSpot ? getExecutableSellPrice(perp) : getExecutableSellPrice(spot),
       gapPct,
+      referenceGapPct,
       estimatedNetPct,
-      longLeg: gapPct >= 0 ? "Binance Spot" : "Binance Futures",
-      shortLeg: gapPct >= 0 ? "Binance Futures" : "Binance Spot",
+      longLeg: buyingSpot ? "Binance Spot" : "Binance Futures",
+      shortLeg: buyingSpot ? "Binance Futures" : "Binance Spot",
     });
   }
 
@@ -165,21 +207,30 @@ export function calculateCrossExchangeArbitrage(
     const rightPriceKrw = right.quote === "KRW" ? right.price : right.price * (options.rightQuoteToKrw ?? 1);
     if (!Number.isFinite(leftPriceKrw) || !Number.isFinite(rightPriceKrw) || leftPriceKrw <= 0 || rightPriceKrw <= 0) continue;
 
-    const cheaper = leftPriceKrw <= rightPriceKrw ? { label: options.leftLabel, price: leftPriceKrw } : { label: options.rightLabel, price: rightPriceKrw };
-    const expensive = leftPriceKrw > rightPriceKrw ? { label: options.leftLabel, price: leftPriceKrw } : { label: options.rightLabel, price: rightPriceKrw };
-    const gapPct = ((expensive.price - cheaper.price) / cheaper.price) * 100;
-    const estimatedNetPct = gapPct - (options.leftFeePct + options.rightFeePct);
+    const leftToRightGapPct =
+      ((getExecutableSellPrice(right, options.rightQuoteToKrw ?? 1) - getExecutableBuyPrice(left, options.rightQuoteToKrw ?? 1)) /
+        getExecutableBuyPrice(left, options.rightQuoteToKrw ?? 1)) *
+      100;
+    const rightToLeftGapPct =
+      ((getExecutableSellPrice(left, options.rightQuoteToKrw ?? 1) - getExecutableBuyPrice(right, options.rightQuoteToKrw ?? 1)) /
+        getExecutableBuyPrice(right, options.rightQuoteToKrw ?? 1)) *
+      100;
+    const buyingLeft = leftToRightGapPct >= rightToLeftGapPct;
+    const gapPct = buyingLeft ? leftToRightGapPct : -rightToLeftGapPct;
+    const referenceGapPct = ((rightPriceKrw - leftPriceKrw) / leftPriceKrw) * 100;
+    const estimatedNetPct = Math.abs(gapPct) - (options.leftFeePct + options.rightFeePct);
 
     opportunities.push({
       symbol: `${left.base}/KRW`,
-      buyExchange: cheaper.label,
-      sellExchange: expensive.label,
-      buyPrice: cheaper.price,
-      sellPrice: expensive.price,
+      buyExchange: buyingLeft ? options.leftLabel : options.rightLabel,
+      sellExchange: buyingLeft ? options.rightLabel : options.leftLabel,
+      buyPrice: buyingLeft ? getExecutableBuyPrice(left, options.rightQuoteToKrw ?? 1) : getExecutableBuyPrice(right, options.rightQuoteToKrw ?? 1),
+      sellPrice: buyingLeft ? getExecutableSellPrice(right, options.rightQuoteToKrw ?? 1) : getExecutableSellPrice(left, options.rightQuoteToKrw ?? 1),
       gapPct,
+      referenceGapPct,
       estimatedNetPct,
-      longLeg: cheaper.label,
-      shortLeg: expensive.label,
+      longLeg: buyingLeft ? options.leftLabel : options.rightLabel,
+      shortLeg: buyingLeft ? options.rightLabel : options.leftLabel,
     });
   }
 
