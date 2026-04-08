@@ -29,7 +29,7 @@ type TransferStatusResponse = {
 type SortDirection = "asc" | "desc";
 
 type OpportunitySortKey = "symbol" | "buyExchange" | "sellExchange" | "buyPrice" | "sellPrice" | "spotPrice" | "futuresPrice" | "gapPct" | "estimatedNetPct";
-type MatrixSortKey = "base" | "bithumbKrw" | "okxKrw" | "binanceKrw" | "spreadPct";
+type MatrixSortKey = "base" | "bithumbKrw" | "okxKrw" | "binanceKrw" | "bybitKrw" | "gateioKrw" | "spreadPct";
 
 type SortConfig<T extends string> = {
   key: T;
@@ -41,6 +41,8 @@ type MatrixRow = {
   bithumbKrw: number | null;
   okxKrw: number | null;
   binanceKrw: number | null;
+  bybitKrw: number | null;
+  gateioKrw: number | null;
   spreadPct: number;
 };
 
@@ -84,9 +86,21 @@ type NavigationSection = {
   description: string;
 };
 
+type OpportunityPreviewConfig = {
+  id: string;
+  title: string;
+  description: string;
+  opportunities: ArbitrageOpportunity[];
+  accentClassName: string;
+  badgeLabel: string;
+  badgeTone: "emerald" | "amber" | "rose" | "slate";
+};
+
 const DEFAULT_BINANCE_TAKER_FEE = 0.05;
 const DEFAULT_BITHUMB_TAKER_FEE = 0.04;
 const DEFAULT_OKX_TAKER_FEE = 0.05;
+const DEFAULT_BYBIT_TAKER_FEE = 0.055;
+const DEFAULT_GATEIO_TAKER_FEE = 0.075;
 const POLL_INTERVAL_MS = 3000;
 const TRANSFER_STATUS_POLL_MS = 300_000;
 const ALERT_THRESHOLD_PCT = 1;
@@ -121,6 +135,8 @@ const MATRIX_COLUMNS: Array<{ key: MatrixSortKey; label: string }> = [
   { key: "bithumbKrw", label: "Bithumb (KRW)" },
   { key: "okxKrw", label: "OKX (KRW)" },
   { key: "binanceKrw", label: "Binance (KRW)" },
+  { key: "bybitKrw", label: "Bybit (KRW)" },
+  { key: "gateioKrw", label: "Gate.io (KRW)" },
   { key: "spreadPct", label: "Spread %" },
 ];
 
@@ -131,6 +147,23 @@ const NAVIGATION_SECTIONS: NavigationSection[] = [
   { id: "cex-dex", eyebrow: "CEX-DEX", title: "현물과 현물 갭", description: "중앙화 거래소와 DEX 비교" },
   { id: "matrix", eyebrow: "Matrix", title: "가격 매트릭스", description: "전체 시세 스캔" },
 ];
+
+function getOpportunityRouteLabel(title: string) {
+  switch (title) {
+    case "Bithumb KRW vs Binance Spot":
+      return "Bithumb -> Binance";
+    case "Bithumb KRW vs OKX Spot":
+      return "Bithumb -> OKX";
+    case "Bithumb KRW vs Bybit Spot":
+      return "Bithumb -> Bybit";
+    case "Bithumb KRW vs Gate.io Spot":
+      return "Bithumb -> Gate.io";
+    case "Bithumb KRW vs Solana DEX":
+      return "Bithumb -> Solana DEX";
+    default:
+      return title;
+  }
+}
 
 function opportunityColumnClass(key: OpportunitySortKey) {
   switch (key) {
@@ -376,6 +409,10 @@ function sortMatrixRows(rows: MatrixRow[], sortConfig: SortConfig<MatrixSortKey>
         return compareNumber(a.okxKrw, b.okxKrw, sortConfig.direction);
       case "binanceKrw":
         return compareNumber(a.binanceKrw, b.binanceKrw, sortConfig.direction);
+      case "bybitKrw":
+        return compareNumber(a.bybitKrw, b.bybitKrw, sortConfig.direction);
+      case "gateioKrw":
+        return compareNumber(a.gateioKrw, b.gateioKrw, sortConfig.direction);
       case "spreadPct":
         return compareNumber(a.spreadPct, b.spreadPct, sortConfig.direction);
     }
@@ -463,6 +500,8 @@ export default function Home() {
   const [bithumbSpotTickers, setBithumbSpotTickers] = useState<NormalizedTicker[]>([]);
   const [okxSpotTickers, setOkxSpotTickers] = useState<NormalizedTicker[]>([]);
   const [okxPerpTickers, setOkxPerpTickers] = useState<NormalizedTicker[]>([]);
+  const [bybitSpotTickers, setBybitSpotTickers] = useState<NormalizedTicker[]>([]);
+  const [gateIoSpotTickers, setGateIoSpotTickers] = useState<NormalizedTicker[]>([]);
   const [solanaDexTickers, setSolanaDexTickers] = useState<NormalizedTicker[]>([]);
   const [usdtKrwRate, setUsdtKrwRate] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
@@ -475,22 +514,26 @@ export default function Home() {
   const [binanceFeePct, setBinanceFeePct] = useState(DEFAULT_BINANCE_TAKER_FEE);
   const [bithumbFeePct, setBithumbFeePct] = useState(DEFAULT_BITHUMB_TAKER_FEE);
   const [okxFeePct, setOkxFeePct] = useState(DEFAULT_OKX_TAKER_FEE);
+  const [bybitFeePct, setBybitFeePct] = useState(DEFAULT_BYBIT_TAKER_FEE);
+  const [gateIoFeePct, setGateIoFeePct] = useState(DEFAULT_GATEIO_TAKER_FEE);
   const [minVolumeUsdt, setMinVolumeUsdt] = useState(0);
   const [countdown, setCountdown] = useState(POLL_INTERVAL_MS / 1000);
   const [matrixSortConfig, setMatrixSortConfig] = useState<SortConfig<MatrixSortKey>>({ key: "spreadPct", direction: "asc" });
   const [matrixOrderLock, setMatrixOrderLock] = useState<string[] | null>(null);
   const [bithumbTransferStatus, setBithumbTransferStatus] = useState<TransferStatusMap>({});
   const [binanceTransferStatus, setBinanceTransferStatus] = useState<TransferStatusMap>({});
+  const [bybitTransferStatus, setBybitTransferStatus] = useState<TransferStatusMap>({});
+  const [gateIoTransferStatus, setGateIoTransferStatus] = useState<TransferStatusMap>({});
   const [workflowStep, setWorkflowStep] = useState<WorkflowStep>("idle");
   const [workflowCandidate, setWorkflowCandidate] = useState<WorkflowCandidate | null>(null);
   const [workflowMode, setWorkflowMode] = useState<WorkflowMode>("auto");
   const [workflowQuantity, setWorkflowQuantity] = useState("");
   const [workflowUpdatedAt, setWorkflowUpdatedAt] = useState<number | null>(null);
   const [workflowLog, setWorkflowLog] = useState<WorkflowLogEntry[]>([]);
-  const [settingsCollapsed, setSettingsCollapsed] = useState(false);
-  const [alertsCollapsed, setAlertsCollapsed] = useState(false);
+  const [settingsCollapsed, setSettingsCollapsed] = useState(true);
+  const [alertsCollapsed, setAlertsCollapsed] = useState(true);
   const [workflowCollapsed, setWorkflowCollapsed] = useState(false);
-  const [matrixCollapsed, setMatrixCollapsed] = useState(false);
+  const [matrixCollapsed, setMatrixCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
   const workflowLogSignatureRef = useRef<string | null>(null);
 
@@ -499,25 +542,29 @@ export default function Home() {
 
     const poll = async () => {
       try {
-        const [binanceSpotRes, binanceFuturesRes, bithumbRes, okxRes, okxPerpRes, solanaDexRes, fxRes] = await Promise.all([
+        const [binanceSpotRes, binanceFuturesRes, bithumbRes, okxRes, okxPerpRes, bybitRes, gateIoRes, solanaDexRes, fxRes] = await Promise.all([
           fetch("/api/binance/spot"),
-          fetch("/api/binance/futures"),
+          fetch("/api/binance/perp"),
           fetch("/api/bithumb/spot"),
           fetch("/api/okx/spot"),
-          fetch("/api/okx/perp"),
+          fetch("/api/okx/swap"),
+          fetch("/api/bybit/spot"),
+          fetch("/api/gateio/spot"),
           fetch("/api/dex/solana"),
           fetch("/api/fx/usdt-krw"),
         ]);
 
-        const [binanceSpotJson, binanceFuturesJson, bithumbJson, okxJson, okxPerpJson, solanaDexJson, fxJson] = (await Promise.all([
+        const [binanceSpotJson, binanceFuturesJson, bithumbJson, okxJson, okxPerpJson, bybitJson, gateIoJson, solanaDexJson, fxJson] = (await Promise.all([
           binanceSpotRes.json(),
           binanceFuturesRes.json(),
           bithumbRes.json(),
           okxRes.json(),
           okxPerpRes.json(),
+          bybitRes.json(),
+          gateIoRes.json(),
           solanaDexRes.json(),
           fxRes.json(),
-        ])) as [ApiResponse, ApiResponse, ApiResponse, ApiResponse, ApiResponse, ApiResponse, FxResponse];
+        ])) as [ApiResponse, ApiResponse, ApiResponse, ApiResponse, ApiResponse, ApiResponse, ApiResponse, ApiResponse, FxResponse];
 
         if (
           !binanceSpotJson.success ||
@@ -525,6 +572,8 @@ export default function Home() {
           !bithumbJson.success ||
           !okxJson.success ||
           !okxPerpJson.success ||
+          !bybitJson.success ||
+          !gateIoJson.success ||
           !solanaDexJson.success ||
           !fxJson.success ||
           !binanceSpotJson.data ||
@@ -532,6 +581,8 @@ export default function Home() {
           !bithumbJson.data ||
           !okxJson.data ||
           !okxPerpJson.data ||
+          !bybitJson.data ||
+          !gateIoJson.data ||
           !solanaDexJson.data ||
           !fxJson.data
         ) {
@@ -541,6 +592,8 @@ export default function Home() {
               bithumbJson.error ||
               okxJson.error ||
               okxPerpJson.error ||
+              bybitJson.error ||
+              gateIoJson.error ||
               solanaDexJson.error ||
               fxJson.error ||
               "시세 데이터를 불러오지 못했습니다."
@@ -553,6 +606,8 @@ export default function Home() {
           setBithumbSpotTickers(bithumbJson.data);
           setOkxSpotTickers(okxJson.data);
           setOkxPerpTickers(okxPerpJson.data);
+          setBybitSpotTickers(bybitJson.data);
+          setGateIoSpotTickers(gateIoJson.data);
           setSolanaDexTickers(solanaDexJson.data);
           setUsdtKrwRate(fxJson.data.rate);
           setLastUpdated(
@@ -562,6 +617,8 @@ export default function Home() {
               bithumbJson.fetchedAt ?? 0,
               okxJson.fetchedAt ?? 0,
               okxPerpJson.fetchedAt ?? 0,
+              bybitJson.fetchedAt ?? 0,
+              gateIoJson.fetchedAt ?? 0,
               solanaDexJson.fetchedAt ?? 0,
               fxJson.fetchedAt ?? 0
             )
@@ -590,9 +647,11 @@ export default function Home() {
     let cancelled = false;
 
     const fetchTransferStatus = async () => {
-      const [bithumbStatusResult, binanceStatusResult] = await Promise.allSettled([
+      const [bithumbStatusResult, binanceStatusResult, bybitStatusResult, gateIoStatusResult] = await Promise.allSettled([
         fetch("/api/bithumb/status"),
         fetch("/api/binance/status"),
+        fetch("/api/bybit/status"),
+        fetch("/api/gateio/status"),
       ]);
 
       if (cancelled) return;
@@ -608,6 +667,20 @@ export default function Home() {
         const json = (await binanceStatusResult.value.json()) as TransferStatusResponse;
         if (json.success && json.data) {
           setBinanceTransferStatus(json.data);
+        }
+      }
+
+      if (bybitStatusResult.status === "fulfilled") {
+        const json = (await bybitStatusResult.value.json()) as TransferStatusResponse;
+        if (json.success && json.data) {
+          setBybitTransferStatus(json.data);
+        }
+      }
+
+      if (gateIoStatusResult.status === "fulfilled") {
+        const json = (await gateIoStatusResult.value.json()) as TransferStatusResponse;
+        if (json.success && json.data) {
+          setGateIoTransferStatus(json.data);
         }
       }
     };
@@ -676,6 +749,48 @@ export default function Home() {
     });
   }, [bithumbSpotTickers, binanceSpotTickers, usdtKrwRate, bithumbFeePct, binanceFeePct, minVolumeUsdt]);
 
+  const bithumbBybitOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
+    if (!usdtKrwRate) return [];
+
+    const filteredBithumb =
+      minVolumeUsdt > 0
+        ? bithumbSpotTickers.filter((ticker) => ticker.volume24h !== undefined && ticker.volume24h / usdtKrwRate >= minVolumeUsdt)
+        : bithumbSpotTickers;
+    const filteredBybit =
+      minVolumeUsdt > 0
+        ? bybitSpotTickers.filter((ticker) => ticker.volume24h !== undefined && ticker.volume24h >= minVolumeUsdt)
+        : bybitSpotTickers;
+
+    return calculateCrossExchangeArbitrage(filteredBithumb, filteredBybit, {
+      leftFeePct: bithumbFeePct,
+      rightFeePct: bybitFeePct,
+      rightQuoteToKrw: usdtKrwRate,
+      leftLabel: "Bithumb Spot",
+      rightLabel: "Bybit Spot",
+    });
+  }, [bithumbSpotTickers, bybitSpotTickers, usdtKrwRate, bithumbFeePct, bybitFeePct, minVolumeUsdt]);
+
+  const bithumbGateIoOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
+    if (!usdtKrwRate) return [];
+
+    const filteredBithumb =
+      minVolumeUsdt > 0
+        ? bithumbSpotTickers.filter((ticker) => ticker.volume24h !== undefined && ticker.volume24h / usdtKrwRate >= minVolumeUsdt)
+        : bithumbSpotTickers;
+    const filteredGateIo =
+      minVolumeUsdt > 0
+        ? gateIoSpotTickers.filter((ticker) => ticker.volume24h !== undefined && ticker.volume24h >= minVolumeUsdt)
+        : gateIoSpotTickers;
+
+    return calculateCrossExchangeArbitrage(filteredBithumb, filteredGateIo, {
+      leftFeePct: bithumbFeePct,
+      rightFeePct: gateIoFeePct,
+      rightQuoteToKrw: usdtKrwRate,
+      leftLabel: "Bithumb Spot",
+      rightLabel: "Gate.io Spot",
+    });
+  }, [bithumbSpotTickers, gateIoSpotTickers, usdtKrwRate, bithumbFeePct, gateIoFeePct, minVolumeUsdt]);
+
   const bithumbSolanaDexOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
     if (!usdtKrwRate) return [];
 
@@ -701,7 +816,80 @@ export default function Home() {
   const topOkx = okxInternalOpportunities.slice(0, 15);
   const topCrossExchange = bithumbOkxOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topBithumbBinance = bithumbBinanceOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
+  const topBithumbBybit = bithumbBybitOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
+  const topBithumbGateIo = bithumbGateIoOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topBithumbSolanaDex = bithumbSolanaDexOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
+  const topAnyCrossExchange = useMemo(() => {
+    return [...bithumbOkxOpportunities, ...bithumbBinanceOpportunities, ...bithumbBybitOpportunities, ...bithumbGateIoOpportunities]
+      .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
+      .sort((a, b) => b.estimatedNetPct - a.estimatedNetPct);
+  }, [bithumbBinanceOpportunities, bithumbBybitOpportunities, bithumbGateIoOpportunities, bithumbOkxOpportunities, minSpreadFilter]);
+  const executableCrossExchangeCount = useMemo(() => {
+    return topAnyCrossExchange.filter((opportunity) => {
+      if (opportunity.buyExchange.includes("Binance") || opportunity.sellExchange.includes("Binance")) {
+        return isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, binanceTransferStatus);
+      }
+      if (opportunity.buyExchange.includes("Gate.io") || opportunity.sellExchange.includes("Gate.io")) {
+        return isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, gateIoTransferStatus);
+      }
+      if (opportunity.buyExchange.includes("Bybit") || opportunity.sellExchange.includes("Bybit")) {
+        return isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, bybitTransferStatus);
+      }
+      return isTransferReadyForOpportunity(opportunity, bithumbTransferStatus);
+    }).length;
+  }, [binanceTransferStatus, bithumbTransferStatus, bybitTransferStatus, gateIoTransferStatus, topAnyCrossExchange]);
+  const executableBinanceCount = useMemo(
+    () => topBithumbBinance.filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, binanceTransferStatus)).length,
+    [bithumbTransferStatus, binanceTransferStatus, topBithumbBinance]
+  );
+  const executableOkxCount = useMemo(
+    () => topCrossExchange.filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus)).length,
+    [bithumbTransferStatus, topCrossExchange]
+  );
+  const executableGateIoCount = useMemo(
+    () => topBithumbGateIo.filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, gateIoTransferStatus)).length,
+    [bithumbTransferStatus, gateIoTransferStatus, topBithumbGateIo]
+  );
+  const opportunityPreviewConfigs = useMemo<OpportunityPreviewConfig[]>(() => {
+    return [
+      {
+        id: "binance",
+        title: "Bithumb vs Binance",
+        description: "김프 방향과 실행 가능성을 가장 먼저 보는 대표 루트",
+        opportunities: topBithumbBinance.slice(0, 3),
+        accentClassName: "from-amber-300/20 to-transparent",
+        badgeLabel: executableBinanceCount > 0 ? `실행 가능 ${executableBinanceCount}` : "상태 확인 필요",
+        badgeTone: executableBinanceCount > 0 ? "emerald" : "amber",
+      },
+      {
+        id: "okx",
+        title: "Bithumb vs OKX",
+        description: "대체 거래소 관점으로 볼 때 가장 빠른 보조 루트",
+        opportunities: topCrossExchange.slice(0, 3),
+        accentClassName: "from-cyan-300/20 to-transparent",
+        badgeLabel: executableOkxCount > 0 ? `실행 가능 ${executableOkxCount}` : "체인 확인 필요",
+        badgeTone: executableOkxCount > 0 ? "emerald" : "amber",
+      },
+      {
+        id: "bybit",
+        title: "Bithumb vs Bybit",
+        description: "가격 비교는 가능하지만 전송 상태는 공개 정보 한계가 있음",
+        opportunities: topBithumbBybit.slice(0, 3),
+        accentClassName: "from-fuchsia-300/20 to-transparent",
+        badgeLabel: "상태 미확인",
+        badgeTone: "rose",
+      },
+      {
+        id: "gateio",
+        title: "Bithumb vs Gate.io",
+        description: "체인 상태까지 함께 볼 수 있는 대체 현물 루트",
+        opportunities: topBithumbGateIo.slice(0, 3),
+        accentClassName: "from-emerald-300/20 to-transparent",
+        badgeLabel: executableGateIoCount > 0 ? `실행 가능 ${executableGateIoCount}` : "체인 확인 필요",
+        badgeTone: executableGateIoCount > 0 ? "emerald" : "amber",
+      },
+    ];
+  }, [executableBinanceCount, executableGateIoCount, executableOkxCount, topBithumbBinance, topBithumbBybit, topBithumbGateIo, topCrossExchange]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) {
@@ -714,9 +902,9 @@ export default function Home() {
 
   useEffect(() => {
     if (!notificationsEnabled || notificationPermission !== "granted") return;
-    if (topCrossExchange.length === 0) return;
+    if (topAnyCrossExchange.length === 0) return;
 
-    const top = topCrossExchange[0];
+    const top = topAnyCrossExchange[0];
     if (top.estimatedNetPct < ALERT_THRESHOLD_PCT) return;
 
     const notificationId = `gapgaps:${top.symbol}:${top.buyExchange}:${top.sellExchange}:${top.estimatedNetPct.toFixed(3)}`;
@@ -726,7 +914,7 @@ export default function Home() {
     new Notification("GapGaps Opportunity", {
       body: `${top.symbol} ${top.buyExchange} -> ${top.sellExchange} | 예상 순수익 ${top.estimatedNetPct.toFixed(3)}%`,
     });
-  }, [notificationsEnabled, notificationPermission, topCrossExchange]);
+  }, [notificationsEnabled, notificationPermission, topAnyCrossExchange]);
 
   const priceMatrixRows = useMemo(() => {
     if (!usdtKrwRate) return [];
@@ -735,8 +923,18 @@ export default function Home() {
     const binanceFuturesBaseSet = new Set(binanceFuturesTickers.map((ticker) => ticker.base));
     const bithumbMap = new Map(bithumbSpotTickers.map((ticker) => [ticker.base, ticker]));
     const okxMap = new Map(okxSpotTickers.map((ticker) => [ticker.base, ticker]));
+    const bybitMap = new Map(bybitSpotTickers.map((ticker) => [ticker.base, ticker]));
+    const gateIoMap = new Map(gateIoSpotTickers.map((ticker) => [ticker.base, ticker]));
 
-    const bases = Array.from(new Set([...Array.from(bithumbMap.keys()), ...Array.from(okxMap.keys()), ...Array.from(binanceMap.keys())])).sort();
+    const bases = Array.from(
+      new Set([
+        ...Array.from(bithumbMap.keys()),
+        ...Array.from(okxMap.keys()),
+        ...Array.from(binanceMap.keys()),
+        ...Array.from(bybitMap.keys()),
+        ...Array.from(gateIoMap.keys()),
+      ])
+    ).sort();
 
     return bases
       .map((base) => {
@@ -745,12 +943,16 @@ export default function Home() {
         const bithumb = bithumbMap.get(base);
         const okx = okxMap.get(base);
         const binance = binanceMap.get(base);
+        const bybit = bybitMap.get(base);
+        const gateIo = gateIoMap.get(base);
 
         const bithumbKrw = bithumb?.price ?? null;
         const okxKrw = okx ? okx.price * usdtKrwRate : null;
         const binanceKrw = binance ? binance.price * usdtKrwRate : null;
+        const bybitKrw = bybit ? bybit.price * usdtKrwRate : null;
+        const gateioKrw = gateIo ? gateIo.price * usdtKrwRate : null;
 
-        const compared = [bithumbKrw, okxKrw, binanceKrw].filter((value): value is number => value !== null && Number.isFinite(value));
+        const compared = [bithumbKrw, okxKrw, binanceKrw, bybitKrw, gateioKrw].filter((value): value is number => value !== null && Number.isFinite(value));
         if (compared.length < 2) return null;
 
         const minPrice = Math.min(...compared);
@@ -761,6 +963,8 @@ export default function Home() {
           bithumbKrw,
           okxKrw,
           binanceKrw,
+          bybitKrw,
+          gateioKrw,
           spreadPct: ((maxPrice - minPrice) / minPrice) * 100,
         };
       })
@@ -768,7 +972,7 @@ export default function Home() {
       .filter((row) => row.spreadPct >= minSpreadFilter)
       .sort((a, b) => b.spreadPct - a.spreadPct)
       .slice(0, 25);
-  }, [binanceSpotTickers, binanceFuturesTickers, bithumbSpotTickers, okxSpotTickers, usdtKrwRate, minSpreadFilter, matrixRequireFutures]);
+  }, [binanceSpotTickers, binanceFuturesTickers, bithumbSpotTickers, okxSpotTickers, bybitSpotTickers, gateIoSpotTickers, usdtKrwRate, minSpreadFilter, matrixRequireFutures]);
 
   const sortedPriceMatrixRows = useMemo(() => {
     if (!matrixOrderLock) {
@@ -798,6 +1002,14 @@ export default function Home() {
   const binanceSpotPriceMap = useMemo<ForeignPriceMap>(() => {
     return new Map(binanceSpotTickers.map((ticker) => [ticker.base, { price: ticker.price, quote: ticker.quote }]));
   }, [binanceSpotTickers]);
+
+  const bybitSpotPriceMap = useMemo<ForeignPriceMap>(() => {
+    return new Map(bybitSpotTickers.map((ticker) => [ticker.base, { price: ticker.price, quote: ticker.quote }]));
+  }, [bybitSpotTickers]);
+
+  const gateIoSpotPriceMap = useMemo<ForeignPriceMap>(() => {
+    return new Map(gateIoSpotTickers.map((ticker) => [ticker.base, { price: ticker.price, quote: ticker.quote }]));
+  }, [gateIoSpotTickers]);
 
   const solanaDexPriceMap = useMemo<ForeignPriceMap>(() => {
     return new Map(
@@ -841,12 +1053,21 @@ export default function Home() {
     const bestOkxOpportunity = topCrossExchange.find((opportunity) =>
       isTransferReadyForOpportunity(opportunity, bithumbTransferStatus)
     );
+    const bestBybitOpportunity = topBithumbBybit.find((opportunity) =>
+      isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, bybitTransferStatus)
+    );
+    const bestGateIoOpportunity = topBithumbGateIo.find((opportunity) =>
+      isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, gateIoTransferStatus)
+    );
     const bestBinance = bestBinanceOpportunity ? getWorkflowCandidate(bestBinanceOpportunity, "Bithumb -> Binance") : null;
     const bestOkx = bestOkxOpportunity ? getWorkflowCandidate(bestOkxOpportunity, "Bithumb -> OKX") : null;
-    if (!bestBinance) return bestOkx;
-    if (!bestOkx) return bestBinance;
-    return bestBinance.estimatedNetPct >= bestOkx.estimatedNetPct ? bestBinance : bestOkx;
-  }, [bithumbTransferStatus, binanceTransferStatus, topBithumbBinance, topCrossExchange]);
+    const bestBybit = bestBybitOpportunity ? getWorkflowCandidate(bestBybitOpportunity, "Bithumb -> Bybit") : null;
+    const bestGateIo = bestGateIoOpportunity ? getWorkflowCandidate(bestGateIoOpportunity, "Bithumb -> Gate.io") : null;
+
+    return [bestBinance, bestOkx, bestBybit, bestGateIo]
+      .filter((candidate): candidate is WorkflowCandidate => candidate !== null)
+      .sort((left, right) => right.estimatedNetPct - left.estimatedNetPct)[0] ?? null;
+  }, [bithumbTransferStatus, binanceTransferStatus, bybitTransferStatus, gateIoTransferStatus, topBithumbBinance, topCrossExchange, topBithumbBybit, topBithumbGateIo]);
 
   const workflowNetworkState = useMemo(() => {
     if (!workflowCandidate) return null;
@@ -854,8 +1075,24 @@ export default function Home() {
     const symbol = workflowCandidate.symbol.replace("/KRW", "");
     const bithumb = bithumbTransferStatus[symbol];
     const binance = binanceTransferStatus[symbol];
-    const counterpartLabel = workflowCandidate.routeLabel.includes("Binance") ? "바이낸스" : workflowCandidate.routeLabel.includes("OKX") ? "OKX" : "상대 거래소";
-    const counterpartStatus = workflowCandidate.routeLabel.includes("Binance") ? binance : undefined;
+    const bybit = bybitTransferStatus[symbol];
+    const gateIo = gateIoTransferStatus[symbol];
+    const counterpartLabel = workflowCandidate.routeLabel.includes("Binance")
+      ? "바이낸스"
+      : workflowCandidate.routeLabel.includes("OKX")
+        ? "OKX"
+        : workflowCandidate.routeLabel.includes("Bybit")
+          ? "Bybit"
+          : workflowCandidate.routeLabel.includes("Gate.io")
+            ? "Gate.io"
+            : "상대 거래소";
+    const counterpartStatus = workflowCandidate.routeLabel.includes("Binance")
+      ? binance
+      : workflowCandidate.routeLabel.includes("Bybit")
+        ? bybit
+        : workflowCandidate.routeLabel.includes("Gate.io")
+          ? gateIo
+          : undefined;
     const matchedNetworks = getMatchedNetworks(bithumb, counterpartStatus);
 
     return {
@@ -865,7 +1102,7 @@ export default function Home() {
       counterpartStatus,
       matchedNetworks,
     };
-  }, [bithumbTransferStatus, binanceTransferStatus, workflowCandidate]);
+  }, [bithumbTransferStatus, binanceTransferStatus, bybitTransferStatus, gateIoTransferStatus, workflowCandidate]);
 
   useEffect(() => {
     if (!workflowTopCandidate || workflowTopCandidate.estimatedNetPct < ALERT_THRESHOLD_PCT) return;
@@ -933,7 +1170,7 @@ export default function Home() {
               <p className="text-sm font-medium uppercase tracking-[0.2em] text-cyan-300">GapGaps</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white lg:text-4xl">Crypto Arbitrage Monitor</h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-300 lg:text-base">
-                바이낸스 현물과 선물, 빗썸 KRW 마켓, OKX 현물과 무기한 선물 시세를 3초마다 불러와 거래소 간 가격 차이를 빠르게 비교하는
+                바이낸스, 빗썸, OKX, Bybit, Gate.io와 Solana DEX 시세를 3초마다 불러와 거래소 간 가격 차이를 빠르게 비교하는
                 실시간 대시보드입니다.
               </p>
             </div>
@@ -949,29 +1186,78 @@ export default function Home() {
           {error && <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">오류: {error}</div>}
         </header>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <SummaryCard label="Binance Spot" value={binanceSpotTickers.length.toLocaleString()} hint="USDT 마켓 기준" />
-          <SummaryCard label="Bithumb KRW" value={bithumbSpotTickers.length.toLocaleString()} hint="원화 마켓 종목 수" />
-          <SummaryCard label="OKX Spot" value={okxSpotTickers.length.toLocaleString()} hint="USDT 기준 비교 대상" />
-          <SummaryCard
-            label="Best Cross-Exchange"
-            value={
-              topBithumbBinance[0]
-                ? formatPct(topBithumbBinance[0].estimatedNetPct)
-                : topCrossExchange[0]
-                  ? formatPct(topCrossExchange[0].estimatedNetPct)
-                  : loading
-                    ? "..."
-                    : "0.000%"
-            }
-            hint={
-              topBithumbBinance[0]
-                ? `${topBithumbBinance[0].symbol} (Bithumb <-> Binance)`
-                : topCrossExchange[0]
-                  ? `${topCrossExchange[0].symbol} (Bithumb <-> OKX)`
-                  : "크로스 거래소 기준 최고 순수익"
-            }
-          />
+        <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+          <div className="rounded-[32px] border border-cyan-400/15 bg-gradient-to-br from-cyan-400/12 via-slate-950 to-slate-950 p-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Action Center</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">지금 바로 확인할 후보</h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-300">
+                  가장 높은 예상 순수익, 실제 전송 가능 후보 수, 현재 감시 중인 거래소 범위를 먼저 보여줍니다. 아래 카드에서 바로 상세 구역으로 이동해 확인할 수 있습니다.
+                </p>
+              </div>
+              <a href="#cex-cex" className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20">
+                상세 비교로 이동
+              </a>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+              <HeroMetricCard
+                label="Best Cross-Exchange"
+                value={topAnyCrossExchange[0] ? formatPct(topAnyCrossExchange[0].estimatedNetPct) : loading ? "..." : "0.000%"}
+                hint={
+                  topAnyCrossExchange[0]
+                    ? `${topAnyCrossExchange[0].symbol} · ${topAnyCrossExchange[0].buyExchange} -> ${topAnyCrossExchange[0].sellExchange}`
+                    : "크로스 거래소 최고 후보"
+                }
+                tone="cyan"
+              />
+              <HeroMetricCard
+                label="Executable Routes"
+                value={executableCrossExchangeCount.toLocaleString()}
+                hint="현재 전송 상태 기준으로 바로 검토 가능한 후보 수"
+                tone="emerald"
+              />
+              <HeroMetricCard
+                label="Workflow Candidate"
+                value={workflowCandidate ? workflowCandidate.symbol : loading ? "..." : "-"}
+                hint={workflowCandidate ? `${workflowCandidate.routeLabel} · ${formatPct(workflowCandidate.estimatedNetPct)}` : "자동 승인 후보 없음"}
+                tone="amber"
+              />
+              <HeroMetricCard
+                label="Monitored Venues"
+                value="6"
+                hint="Bithumb, Binance, OKX, Bybit, Gate.io, Solana DEX"
+                tone="slate"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-[32px] border border-white/10 bg-white/[0.04] p-6">
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Market Pulse</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <SummaryCard label="Binance Spot" value={binanceSpotTickers.length.toLocaleString()} hint="USDT 마켓 기준" />
+              <SummaryCard label="Bithumb KRW" value={bithumbSpotTickers.length.toLocaleString()} hint="원화 마켓 종목 수" />
+              <SummaryCard label="OKX Spot" value={okxSpotTickers.length.toLocaleString()} hint="USDT 기준 비교 대상" />
+              <SummaryCard label="Bybit / Gate.io" value={`${bybitSpotTickers.length.toLocaleString()} / ${gateIoSpotTickers.length.toLocaleString()}`} hint="대체 해외 현물 대상" />
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Quick Boards</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">시장 스캔을 카드형으로 먼저 보기</h2>
+              <p className="mt-1 text-sm text-slate-400">긴 테이블을 보기 전에, 자주 보는 루트를 요약 카드로 먼저 스캔할 수 있게 정리했습니다.</p>
+            </div>
+            <div className="text-xs text-slate-500">각 카드에서 상위 3개 후보만 먼저 보여줍니다.</div>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {opportunityPreviewConfigs.map((config) => (
+              <OpportunityPreviewPanel key={config.id} config={config} />
+            ))}
+          </div>
         </section>
 
         <section className="rounded-3xl border border-amber-300/20 bg-amber-400/10 p-5 text-sm text-amber-50">
@@ -1003,6 +1289,8 @@ export default function Home() {
                   setBinanceFeePct(DEFAULT_BINANCE_TAKER_FEE);
                   setBithumbFeePct(DEFAULT_BITHUMB_TAKER_FEE);
                   setOkxFeePct(DEFAULT_OKX_TAKER_FEE);
+                  setBybitFeePct(DEFAULT_BYBIT_TAKER_FEE);
+                  setGateIoFeePct(DEFAULT_GATEIO_TAKER_FEE);
                   setMinVolumeUsdt(0);
                 }}
               >
@@ -1014,10 +1302,12 @@ export default function Home() {
 
           {!settingsCollapsed ? (
             <>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
                 <FeeInput label="Binance taker" value={binanceFeePct} onChange={setBinanceFeePct} defaultValue={DEFAULT_BINANCE_TAKER_FEE} />
                 <FeeInput label="Bithumb taker" value={bithumbFeePct} onChange={setBithumbFeePct} defaultValue={DEFAULT_BITHUMB_TAKER_FEE} />
                 <FeeInput label="OKX taker" value={okxFeePct} onChange={setOkxFeePct} defaultValue={DEFAULT_OKX_TAKER_FEE} />
+                <FeeInput label="Bybit taker" value={bybitFeePct} onChange={setBybitFeePct} defaultValue={DEFAULT_BYBIT_TAKER_FEE} />
+                <FeeInput label="Gate.io taker" value={gateIoFeePct} onChange={setGateIoFeePct} defaultValue={DEFAULT_GATEIO_TAKER_FEE} />
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -1126,6 +1416,7 @@ export default function Home() {
             marketMode="internal"
             leftMarketLabel="Spot Price"
             rightMarketLabel="Futures Price"
+            initialCollapsed
           />
 
           <OpportunitySection
@@ -1136,6 +1427,7 @@ export default function Home() {
             marketMode="internal"
             leftMarketLabel="Spot Price"
             rightMarketLabel="Perp Price"
+            initialCollapsed
           />
         </CategorySection>
 
@@ -1193,6 +1485,58 @@ export default function Home() {
               rightStatuses: binanceTransferStatus,
             }}
           />
+
+          <OpportunitySection
+            title="Bithumb KRW vs Bybit Spot"
+            description="빗썸 원화 마켓과 Bybit USDT 마켓을 같은 KRW 기준으로 비교합니다. 다만 Bybit는 현재 공개 엔드포인트만 사용 중이라 실제 입출금 가능 상태는 확인 불가로 표시합니다."
+            opportunities={topBithumbBybit}
+            loading={loading}
+            marketMode="krw-cross"
+            leftMarketLabel="KRW Price"
+            rightMarketLabel="Spot Price"
+            foreignPriceMap={bybitSpotPriceMap}
+            workflowCandidateId={workflowCandidate?.id ?? null}
+            onPromoteToWorkflow={(opportunity) => {
+              setWorkflowMode("manual");
+              setWorkflowCandidate(getWorkflowCandidate(opportunity, "Bithumb -> Bybit"));
+              setWorkflowStep("detected");
+              setWorkflowQuantity("");
+              setWorkflowUpdatedAt(Date.now());
+            }}
+            workflowPromotionDisabledReason="상태 미확인"
+            transferStatusConfig={{
+              leftExchangeLabel: "빗썸",
+              leftStatuses: bithumbTransferStatus,
+              rightExchangeLabel: "Bybit",
+              rightStatuses: bybitTransferStatus,
+              rightNotice: "Bybit transfer status unavailable",
+            }}
+          />
+
+          <OpportunitySection
+            title="Bithumb KRW vs Gate.io Spot"
+            description="빗썸 원화 마켓과 Gate.io USDT 마켓을 같은 KRW 기준으로 비교합니다. 해외 현물 가격 분산을 더 넓게 볼 수 있습니다."
+            opportunities={topBithumbGateIo}
+            loading={loading}
+            marketMode="krw-cross"
+            leftMarketLabel="KRW Price"
+            rightMarketLabel="Spot Price"
+            foreignPriceMap={gateIoSpotPriceMap}
+            workflowCandidateId={workflowCandidate?.id ?? null}
+            onPromoteToWorkflow={(opportunity) => {
+              setWorkflowMode("manual");
+              setWorkflowCandidate(getWorkflowCandidate(opportunity, "Bithumb -> Gate.io"));
+              setWorkflowStep("detected");
+              setWorkflowQuantity("");
+              setWorkflowUpdatedAt(Date.now());
+            }}
+            transferStatusConfig={{
+              leftExchangeLabel: "빗썸",
+              leftStatuses: bithumbTransferStatus,
+              rightExchangeLabel: "Gate.io",
+              rightStatuses: gateIoTransferStatus,
+            }}
+          />
         </CategorySection>
 
         <CategorySection
@@ -1210,6 +1554,7 @@ export default function Home() {
             leftMarketLabel="KRW Price"
             rightMarketLabel="DEX Price"
             foreignPriceMap={solanaDexPriceMap}
+            initialCollapsed
             transferStatusConfig={{
               leftExchangeLabel: "빗썸",
               leftStatuses: bithumbTransferStatus,
@@ -1224,7 +1569,7 @@ export default function Home() {
             <div>
               <h2 className="text-xl font-semibold text-white">Exchange Coin Price Matrix</h2>
               <p className="mt-1 text-sm text-slate-400">
-                빗썸 KRW, OKX Spot, Binance Spot 가격을 모두 KRW 기준으로 비교합니다. 선물 종목이 있는 코인만 보거나 최소 스프레드 이상만
+                빗썸 KRW, OKX Spot, Binance Spot, Bybit Spot, Gate.io Spot 가격을 모두 KRW 기준으로 비교합니다. 선물 종목이 있는 코인만 보거나 최소 스프레드 이상만
                 필터링해서 볼 수 있습니다.
               </p>
             </div>
@@ -1289,7 +1634,7 @@ export default function Home() {
                 <tbody className="divide-y divide-white/5 bg-slate-950/40">
                   {sortedPriceMatrixRows.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                         {loading ? "시세 데이터를 불러오는 중..." : "비교 가능한 가격 데이터가 없습니다."}
                       </td>
                     </tr>
@@ -1300,6 +1645,8 @@ export default function Home() {
                         <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.bithumbKrw ? formatPrice(row.bithumbKrw) : "-"}</td>
                         <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.okxKrw ? formatPrice(row.okxKrw) : "-"}</td>
                         <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.binanceKrw ? formatPrice(row.binanceKrw) : "-"}</td>
+                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.bybitKrw ? formatPrice(row.bybitKrw) : "-"}</td>
+                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.gateioKrw ? formatPrice(row.gateioKrw) : "-"}</td>
                         <td className={`px-4 py-3 font-mono tabular-nums font-semibold ${row.spreadPct > 0.5 ? "text-emerald-400" : "text-slate-300"}`}>{formatPct(row.spreadPct)}</td>
                       </tr>
                     ))
@@ -1338,6 +1685,8 @@ function OpportunitySection({
   workflowCandidateId,
   onPromoteToWorkflow,
   transferStatusConfig,
+  workflowPromotionDisabledReason,
+  initialCollapsed = false,
 }: {
   title: string;
   description: string;
@@ -1354,11 +1703,15 @@ function OpportunitySection({
     leftStatuses: TransferStatusMap;
     rightExchangeLabel: string;
     rightStatuses?: TransferStatusMap;
+    leftNotice?: string;
+    rightNotice?: string;
   };
+  workflowPromotionDisabledReason?: string;
+  initialCollapsed?: boolean;
 }) {
   const [sortConfig, setSortConfig] = useState<SortConfig<OpportunitySortKey>>({ key: "estimatedNetPct", direction: "asc" });
   const [orderLock, setOrderLock] = useState<string[] | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
 
   const columns = marketMode === "cross" ? CROSS_EXCHANGE_COLUMNS : INTERNAL_OPPORTUNITY_COLUMNS(leftMarketLabel, rightMarketLabel);
   const hasTransferStatus = Boolean(transferStatusConfig);
@@ -1447,12 +1800,7 @@ function OpportunitySection({
                 const leftNetworkSummary = formatNetworkSummary(summarizeExecutableNetworks(leftTransferStatus));
                 const rightNetworkSummary = formatNetworkSummary(summarizeExecutableNetworks(rightTransferStatus));
                 const executionStatus = hasTransferStatus ? getExecutionStatus(opportunity, leftTransferStatus, rightTransferStatus) : null;
-                const routeLabel =
-                  title === "Bithumb KRW vs Binance Spot"
-                    ? "Bithumb -> Binance"
-                    : title === "Bithumb KRW vs OKX Spot"
-                      ? "Bithumb -> OKX"
-                      : title;
+                const routeLabel = getOpportunityRouteLabel(title);
                 const candidateId = getWorkflowCandidate(opportunity, routeLabel).id;
                 const isWorkflowSelected = workflowCandidateId === candidateId;
                 const renderCrossExchangePrice = (exchangeLabel: string, krwPrice: number) => {
@@ -1476,17 +1824,23 @@ function OpportunitySection({
                               exchangeLabel={transferStatusConfig?.rightExchangeLabel ?? ""}
                               status={rightTransferStatus}
                             />
+                            {transferStatusConfig?.rightNotice ? <TransferNoticeBadge text={transferStatusConfig.rightNotice} /> : null}
                             {onPromoteToWorkflow ? (
                               <button
                                 type="button"
-                                onClick={() => onPromoteToWorkflow(opportunity)}
+                                onClick={() => {
+                                  if (!workflowPromotionDisabledReason) onPromoteToWorkflow(opportunity);
+                                }}
+                                disabled={Boolean(workflowPromotionDisabledReason)}
                                 className={`mt-1 inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-                                  isWorkflowSelected
+                                  workflowPromotionDisabledReason
+                                    ? "cursor-not-allowed border-white/10 bg-slate-900/50 text-slate-500"
+                                    : isWorkflowSelected
                                     ? "border-cyan-300/30 bg-cyan-400/15 text-cyan-100"
                                     : "border-white/10 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
                                 }`}
                               >
-                                {isWorkflowSelected ? "현재 승인 후보" : "이 후보로 진행"}
+                                {workflowPromotionDisabledReason ? workflowPromotionDisabledReason : isWorkflowSelected ? "현재 승인 후보" : "이 후보로 진행"}
                               </button>
                             ) : null}
                           </div>
@@ -1518,6 +1872,7 @@ function OpportunitySection({
                             {foreignPrice ? `${formatPrice(foreignSpotKrwPrice)} (${formatOriginalPrice(foreignPrice.price, foreignPrice.quote)})` : formatPrice(foreignSpotKrwPrice)}
                           </div>
                           {hasTransferStatus ? <div className="mt-1 text-[11px] text-slate-500">{transferStatusConfig?.rightExchangeLabel} 네트워크: {rightNetworkSummary}</div> : null}
+                          {transferStatusConfig?.rightNotice ? <div className="mt-2"><TransferNoticeBadge text={transferStatusConfig.rightNotice} /></div> : null}
                           {foreignPrice?.dexId ? (
                             <div className="mt-1 text-[11px] text-slate-500">
                               DEX: {foreignPrice.dexId}
@@ -1589,6 +1944,102 @@ function TransferStatusBadge({ enabled, label }: { enabled: boolean | null; labe
         : "border-rose-400/20 bg-rose-500/10 text-rose-200";
 
   return <span className={`rounded-full border px-2 py-1 text-[11px] ${className}`}>{formatTransferAvailability(enabled, label)}</span>;
+}
+
+function TransferNoticeBadge({ text }: { text: string }) {
+  return <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-2 py-1 text-[11px] text-amber-100">{text}</span>;
+}
+
+function HeroMetricCard({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  tone: "cyan" | "emerald" | "amber" | "slate";
+}) {
+  const toneClassName =
+    tone === "cyan"
+      ? "border-cyan-300/20 bg-cyan-400/10"
+      : tone === "emerald"
+        ? "border-emerald-300/20 bg-emerald-400/10"
+        : tone === "amber"
+          ? "border-amber-300/20 bg-amber-400/10"
+          : "border-white/10 bg-white/[0.04]";
+
+  return (
+    <div className={`rounded-3xl border p-4 sm:p-5 ${toneClassName}`}>
+      <p className="text-xs sm:text-sm text-slate-300">{label}</p>
+      <div className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">{value}</div>
+      <p className="mt-2 text-xs text-slate-400">{hint}</p>
+    </div>
+  );
+}
+
+function OpportunityPreviewPanel({ config }: { config: OpportunityPreviewConfig }) {
+  const badgeClassName =
+    config.badgeTone === "emerald"
+      ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-100"
+      : config.badgeTone === "amber"
+        ? "border-amber-300/25 bg-amber-400/15 text-amber-100"
+        : config.badgeTone === "rose"
+          ? "border-rose-300/25 bg-rose-400/15 text-rose-100"
+          : "border-white/10 bg-slate-950/70 text-slate-300";
+
+  return (
+    <div className={`rounded-3xl border border-white/10 bg-gradient-to-br ${config.accentClassName} p-4 sm:p-5`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-white">{config.title}</h3>
+          <p className="mt-1 text-sm text-slate-400">{config.description}</p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <div className={`rounded-full border px-3 py-1 text-xs font-medium ${badgeClassName}`}>{config.badgeLabel}</div>
+          <div className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-[11px] text-slate-300">
+            Top {Math.min(config.opportunities.length, 3)}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 space-y-3">
+        {config.opportunities.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-4 text-sm text-slate-500">조건에 맞는 후보가 없습니다.</div>
+        ) : (
+          config.opportunities.map((opportunity) => (
+            <div key={`${config.id}-${opportunity.symbol}-${opportunity.buyExchange}-${opportunity.sellExchange}`} className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-3 sm:px-4 sm:py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-white sm:text-[15px]">{opportunity.symbol}</div>
+                  <div className="mt-1 text-[11px] text-slate-400 sm:text-xs">
+                    {opportunity.buyExchange} {"->"} {opportunity.sellExchange}
+                  </div>
+                </div>
+                <div className={`text-right text-sm font-mono tabular-nums ${opportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                  {formatPct(opportunity.estimatedNetPct)}
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2">
+                  <div className="text-[11px] text-slate-500">매수</div>
+                  <div className="mt-1 font-mono text-xs text-slate-200">{formatPrice(opportunity.buyPrice)}</div>
+                </div>
+                <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2">
+                  <div className="text-[11px] text-slate-500">매도</div>
+                  <div className="mt-1 font-mono text-xs text-slate-200">{formatPrice(opportunity.sellPrice)}</div>
+                </div>
+                <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2">
+                  <div className="text-[11px] text-slate-500">Gap</div>
+                  <div className="mt-1 font-mono text-xs text-slate-200">{formatPct(opportunity.gapPct)}</div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
 
 function SummaryCard({ label, value, hint }: { label: string; value: string; hint: string }) {
@@ -2039,4 +2490,3 @@ function NetworkStatusCard({ label, status }: { label: string; status?: Transfer
     </div>
   );
 }
-
