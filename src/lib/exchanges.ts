@@ -90,6 +90,51 @@ export function normalizeBithumbSpotTickers(
   return result;
 }
 
+export function normalizeUpbitSpotTickers(
+  raw: Array<{
+    market: string;
+    trade_price: number;
+    acc_trade_price_24h?: number;
+    timestamp?: number;
+  }>,
+  orderbook?: Record<
+    string,
+    {
+      orderbook_units?: Array<{
+        bid_price: number;
+        ask_price: number;
+      }>;
+    }
+  >
+): NormalizedTicker[] {
+  const result: NormalizedTicker[] = [];
+
+  for (const item of raw) {
+    const [quote, base] = item.market.split("-");
+    const price = Number(item.trade_price);
+    if (quote !== "KRW" || !base || !Number.isFinite(price) || price <= 0) continue;
+
+    const volume24h = Number(item.acc_trade_price_24h);
+    const bestBid = Number(orderbook?.[item.market]?.orderbook_units?.[0]?.bid_price);
+    const bestAsk = Number(orderbook?.[item.market]?.orderbook_units?.[0]?.ask_price);
+
+    result.push({
+      exchange: "Upbit",
+      marketType: "spot",
+      symbol: `${base}KRW`,
+      base,
+      quote: "KRW",
+      price,
+      bidPrice: Number.isFinite(bestBid) && bestBid > 0 ? bestBid : undefined,
+      askPrice: Number.isFinite(bestAsk) && bestAsk > 0 ? bestAsk : undefined,
+      volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
+      timestamp: item.timestamp ?? Date.now(),
+    });
+  }
+
+  return result;
+}
+
 export function normalizeOkxSpotTickers(raw: { code: string; data: Array<{ instId: string; last: string; bidPx?: string; askPx?: string; volCcy24h?: string }> }): NormalizedTicker[] {
   if (raw.code !== "0") return [];
 
@@ -218,6 +263,88 @@ export function normalizeGateIoSpotTickers(
     result.push({
       exchange: "Gate.io",
       marketType: "spot",
+      symbol: `${base}${quote}`,
+      base,
+      quote,
+      price,
+      bidPrice: Number.isFinite(bidPrice) && bidPrice > 0 ? bidPrice : undefined,
+      askPrice: Number.isFinite(askPrice) && askPrice > 0 ? askPrice : undefined,
+      volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
+      timestamp: Date.now(),
+    });
+  }
+
+  return result;
+}
+
+export function normalizeBybitPerpTickers(
+  raw: {
+    retCode: number;
+    result?: {
+      list?: Array<{
+        symbol: string;
+        lastPrice: string;
+        bid1Price?: string;
+        ask1Price?: string;
+        turnover24h?: string;
+      }>;
+    };
+  }
+): NormalizedTicker[] {
+  if (raw.retCode !== 0) return [];
+
+  const result: NormalizedTicker[] = [];
+
+  for (const item of raw.result?.list ?? []) {
+    const price = Number(item.lastPrice);
+    if (!item.symbol || !Number.isFinite(price) || price <= 0) continue;
+    const { base, quote } = splitSymbol(item.symbol);
+    if (quote !== "USDT") continue;
+
+    const volume24h = Number(item.turnover24h);
+    const bidPrice = Number(item.bid1Price);
+    const askPrice = Number(item.ask1Price);
+
+    result.push({
+      exchange: "Bybit",
+      marketType: "perp",
+      symbol: item.symbol,
+      base,
+      quote,
+      price,
+      bidPrice: Number.isFinite(bidPrice) && bidPrice > 0 ? bidPrice : undefined,
+      askPrice: Number.isFinite(askPrice) && askPrice > 0 ? askPrice : undefined,
+      volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
+      timestamp: Date.now(),
+    });
+  }
+
+  return result;
+}
+
+export function normalizeGateIoPerpTickers(
+  raw: Array<{
+    contract: string;
+    last: string;
+    highest_bid?: string;
+    lowest_ask?: string;
+    volume_24h_quote?: string;
+  }>
+): NormalizedTicker[] {
+  const result: NormalizedTicker[] = [];
+
+  for (const item of raw) {
+    const [base, quote] = item.contract.split("_");
+    const price = Number(item.last);
+    if (!base || quote !== "USDT" || !Number.isFinite(price) || price <= 0) continue;
+
+    const volume24h = Number(item.volume_24h_quote);
+    const bidPrice = Number(item.highest_bid);
+    const askPrice = Number(item.lowest_ask);
+
+    result.push({
+      exchange: "Gate.io",
+      marketType: "perp",
       symbol: `${base}${quote}`,
       base,
       quote,
