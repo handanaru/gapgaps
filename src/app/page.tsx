@@ -630,6 +630,8 @@ function getExecutionStatus(
 export default function Home() {
   const [binanceSpotTickers, setBinanceSpotTickers] = useState<NormalizedTicker[]>([]);
   const [binanceFuturesTickers, setBinanceFuturesTickers] = useState<NormalizedTicker[]>([]);
+  const [binancePerpEnabled, setBinancePerpEnabled] = useState(true);
+  const [binancePerpError, setBinancePerpError] = useState<string | null>(null);
   const [bithumbSpotTickers, setBithumbSpotTickers] = useState<NormalizedTicker[]>([]);
   const [upbitSpotTickers, setUpbitSpotTickers] = useState<NormalizedTicker[]>([]);
   const [okxSpotTickers, setOkxSpotTickers] = useState<NormalizedTicker[]>([]);
@@ -713,7 +715,6 @@ export default function Home() {
 
         if (
           !binanceSpotJson.success ||
-          !binanceFuturesJson.success ||
           !bithumbJson.success ||
           !upbitJson.success ||
           !okxJson.success ||
@@ -725,7 +726,6 @@ export default function Home() {
           !solanaDexJson.success ||
           !fxJson.success ||
           !binanceSpotJson.data ||
-          !binanceFuturesJson.data ||
           !bithumbJson.data ||
           !upbitJson.data ||
           !okxJson.data ||
@@ -739,7 +739,6 @@ export default function Home() {
         ) {
           throw new Error(
             binanceSpotJson.error ||
-              binanceFuturesJson.error ||
               bithumbJson.error ||
               upbitJson.error ||
               okxJson.error ||
@@ -756,7 +755,9 @@ export default function Home() {
 
         if (!cancelled) {
           setBinanceSpotTickers(binanceSpotJson.data);
-          setBinanceFuturesTickers(binanceFuturesJson.data);
+          setBinanceFuturesTickers(binanceFuturesJson.success && binanceFuturesJson.data ? binanceFuturesJson.data : []);
+          setBinancePerpEnabled(Boolean(binanceFuturesJson.success && binanceFuturesJson.data));
+          setBinancePerpError(binanceFuturesJson.success ? null : binanceFuturesJson.error ?? "Binance perp fetch failed");
           setBithumbSpotTickers(bithumbJson.data);
           setUpbitSpotTickers(upbitJson.data);
           setOkxSpotTickers(okxJson.data);
@@ -2004,9 +2005,11 @@ export default function Home() {
         >
           <OpportunitySection
             title="Binance Spot vs Futures"
-            description="같은 코인의 현물과 선물 가격 차이를 기준으로 내부 괴리를 정리합니다. 출금비, 슬리피지, 펀딩비는 포함하지 않은 참고용 지표입니다."
+            description={binancePerpEnabled
+              ? "같은 코인의 현물과 선물 가격 차이를 기준으로 내부 괴리를 정리합니다. 출금비, 슬리피지, 펀딩비는 포함하지 않은 참고용 지표입니다."
+              : `현재 Binance 선물 API가 배포 환경에서 차단되어 비활성화 상태입니다. (${binancePerpError ?? "Binance perp unavailable"})`}
             opportunities={topBinance}
-            loading={loading}
+            loading={loading && binancePerpEnabled}
             marketMode="internal"
             leftMarketLabel="Spot Price"
             rightMarketLabel="Futures Price"
