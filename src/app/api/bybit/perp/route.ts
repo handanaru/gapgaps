@@ -12,7 +12,7 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      return NextResponse.json({ success: false, error: `Bybit perp fetch failed: ${response.status}` }, { status: 502 });
+      throw new Error(`Bybit perp fetch failed: ${response.status}`);
     }
 
     const raw = (await response.json()) as {
