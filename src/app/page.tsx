@@ -2106,10 +2106,36 @@ export default function Home() {
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-            <div className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">국내 기준 1</div>
-            <div className="mt-1 text-lg font-semibold text-white">빗썸 KRW 기준 비교</div>
-            <div className="mt-1 text-sm text-slate-400">현재까지 입출금/네트워크 상태를 가장 많이 확인할 수 있는 국내 비교축입니다.</div>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <div className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">국내 기준 1</div>
+                <div className="mt-1 text-lg font-semibold text-white">빗썸 KRW 기준 비교</div>
+                <div className="mt-1 text-sm text-slate-400">현재까지 입출금/네트워크 상태를 가장 많이 확인할 수 있는 국내 비교축입니다.</div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-300/15 bg-slate-950/60 px-3 py-3">
+                <span className="text-xs font-medium text-slate-400">바로가기</span>
+                {[
+                  { href: '#bithumb-okx', label: '빗썸 → OKX' },
+                  { href: '#bithumb-binance', label: '빗썸 → 바이낸스' },
+                  { href: '#bithumb-bybit', label: '빗썸 → Bybit' },
+                  { href: '#bithumb-gateio', label: '빗썸 → Gate.io' },
+                  { href: '#upbit-okx', label: '업비트 → OKX' },
+                  { href: '#upbit-binance', label: '업비트 → 바이낸스' },
+                  { href: '#upbit-bybit', label: '업비트 → Bybit' },
+                  { href: '#upbit-gateio', label: '업비트 → Gate.io' },
+                ].map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-300/30 hover:bg-cyan-400/10 hover:text-cyan-100"
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
+          <div id="bithumb-okx" className="scroll-mt-28">
           <OpportunitySection
             title="Bithumb KRW vs OKX Spot"
             description="빗썸 원화 마켓과 OKX 현물 가격을 USDT/KRW 환율로 맞춰 비교합니다. 실제 송금, 환전, 출금 비용은 별도로 반영해야 합니다."
@@ -2133,7 +2159,9 @@ export default function Home() {
               rightExchangeLabel: "OKX",
             }}
           />
+          </div>
 
+          <div id="bithumb-binance" className="scroll-mt-28">
           <OpportunitySection
             title="Bithumb KRW vs Binance Spot"
             description="빗썸 원화 마켓과 바이낸스 USDT 마켓을 같은 KRW 기준으로 비교합니다. 김치 프리미엄 방향과 크기를 빠르게 확인할 때 유용합니다."
@@ -2158,7 +2186,9 @@ export default function Home() {
               rightStatuses: binanceTransferStatus,
             }}
           />
+          </div>
 
+          <div id="bithumb-bybit" className="scroll-mt-28">
           <OpportunitySection
             title="Bithumb KRW vs Bybit Spot"
             description="빗썸 원화 마켓과 Bybit USDT 마켓을 같은 KRW 기준으로 비교합니다. 다만 Bybit는 현재 공개 엔드포인트만 사용 중이라 실제 입출금 가능 상태는 확인 불가로 표시합니다."
@@ -2185,7 +2215,9 @@ export default function Home() {
               rightNotice: "Bybit transfer status unavailable",
             }}
           />
+          </div>
 
+          <div id="bithumb-gateio" className="scroll-mt-28">
           <OpportunitySection
             title="Bithumb KRW vs Gate.io Spot"
             description="빗썸 원화 마켓과 Gate.io USDT 마켓을 같은 KRW 기준으로 비교합니다. 해외 현물 가격 분산을 더 넓게 볼 수 있습니다."
@@ -2210,6 +2242,7 @@ export default function Home() {
               rightStatuses: gateIoTransferStatus,
             }}
           />
+          </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
             <div className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">국내 기준 2</div>
@@ -2217,6 +2250,7 @@ export default function Home() {
             <div className="mt-1 text-sm text-slate-400">업비트는 공개 가격과 호가는 반영하고, 전송 상태는 공개 API 한계로 안내 배지로 표시합니다.</div>
           </div>
 
+          <div id="upbit-okx" className="scroll-mt-28">
           <OpportunitySection
             title="Upbit KRW vs OKX Spot"
             description="업비트 원화 마켓과 OKX 현물 가격을 USDT/KRW 환율로 맞춰 비교합니다. 업비트 전송 상태는 공개 API 미지원이라 참고용 가격 비교에 초점을 둡니다."
@@ -2236,7 +2270,9 @@ export default function Home() {
               rightNotice: "OKX 공개 전송 상태 미지원",
             }}
           />
+          </div>
 
+          <div id="upbit-binance" className="scroll-mt-28">
           <OpportunitySection
             title="Upbit KRW vs Binance Spot"
             description="업비트 원화 마켓과 바이낸스 USDT 마켓을 같은 KRW 기준으로 비교합니다. 가격 괴리는 바로 볼 수 있지만 업비트 전송 상태는 별도 확인이 필요합니다."
@@ -2256,7 +2292,9 @@ export default function Home() {
               rightStatuses: binanceTransferStatus,
             }}
           />
+          </div>
 
+          <div id="upbit-bybit" className="scroll-mt-28">
           <OpportunitySection
             title="Upbit KRW vs Bybit Spot"
             description="업비트 원화 마켓과 Bybit USDT 마켓을 같은 KRW 기준으로 비교합니다. 가격은 비교 가능하지만 양쪽 모두 전송 상태는 공개 정보가 제한적입니다."
@@ -2277,7 +2315,9 @@ export default function Home() {
               rightNotice: "Bybit transfer status unavailable",
             }}
           />
+          </div>
 
+          <div id="upbit-gateio" className="scroll-mt-28">
           <OpportunitySection
             title="Upbit KRW vs Gate.io Spot"
             description="업비트 원화 마켓과 Gate.io USDT 마켓을 같은 KRW 기준으로 비교합니다. 국내 원화축을 업비트로 바꿔 봐야 할 때 참고하기 좋습니다."
@@ -2297,6 +2337,7 @@ export default function Home() {
               rightStatuses: gateIoTransferStatus,
             }}
           />
+          </div>
         </CategorySection>
 
         <CategorySection
@@ -3353,3 +3394,5 @@ function NetworkStatusCard({ label, status }: { label: string; status?: Transfer
     </div>
   );
 }
+
+
