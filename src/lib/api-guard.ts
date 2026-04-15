@@ -5,7 +5,7 @@ export function createBlockedExchangeResponse(exchange: string, market: string, 
 
   return NextResponse.json(
     {
-      success: false,
+      success: isBlocked,
       disabled: isBlocked,
       data: [],
       error,
