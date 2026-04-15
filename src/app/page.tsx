@@ -1,6 +1,8 @@
 ﻿"use client";
 
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { getDexExecutionStatus } from "@/lib/dex-execution";
+import { getDexTokenBySymbol } from "@/lib/dex-tokens";
 import { calculateArbitrage, calculateCrossExchangeArbitrage } from "@/lib/exchanges";
 import { formatNetworkSummary, getMatchedNetworks, summarizeExecutableNetworks } from "@/lib/networks";
 import { ArbitrageOpportunity, NormalizedTicker, TransferStatus } from "@/lib/types";
@@ -75,6 +77,17 @@ type ForeignPriceMap = Map<
   }
 >;
 type TransferStatusMap = Record<string, TransferStatus>;
+type DexExecutionRow = {
+  symbol: string;
+  chainLabel: string;
+  status: "executable" | "reference-only" | "blocked";
+  reason: string;
+  matchedNetworkSummary: string;
+  depositEnabled: boolean;
+  withdrawEnabled: boolean;
+  liquidityUsd?: number;
+  sourceUrl?: string;
+};
 type WorkflowStep = "idle" | "detected" | "quantity-approved" | "auth-approved" | "executed";
 type WorkflowCandidate = {
   id: string;
@@ -1039,22 +1052,38 @@ export default function Home() {
     });
   }, [upbitSpotTickers, gateIoSpotTickers, usdtKrwRate, bithumbFeePct, gateIoFeePct, minVolumeUsdt]);
 
+  const solanaDexExecutableSymbols = useMemo(() => {
+    return new Set(
+      solanaDexTickers
+        .filter((ticker) => {
+          const dexToken = getDexTokenBySymbol(ticker.base);
+          if (!dexToken) return false;
+          return getDexExecutionStatus(dexToken, bithumbTransferStatus[ticker.base]).status === "executable";
+        })
+        .map((ticker) => ticker.base)
+    );
+  }, [bithumbTransferStatus, solanaDexTickers]);
+
   const bithumbSolanaDexOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
     if (!usdtKrwRate) return [];
 
+    const executableDexTickers = solanaDexTickers.filter((ticker) => solanaDexExecutableSymbols.has(ticker.base));
     const filteredBithumb =
       minVolumeUsdt > 0
-        ? bithumbSpotTickers.filter((ticker) => ticker.volume24h !== undefined && ticker.volume24h / usdtKrwRate >= minVolumeUsdt)
-        : bithumbSpotTickers;
+        ? bithumbSpotTickers.filter(
+            (ticker) =>
+              solanaDexExecutableSymbols.has(ticker.base) && ticker.volume24h !== undefined && ticker.volume24h / usdtKrwRate >= minVolumeUsdt
+          )
+        : bithumbSpotTickers.filter((ticker) => solanaDexExecutableSymbols.has(ticker.base));
 
-    return calculateCrossExchangeArbitrage(filteredBithumb, solanaDexTickers, {
+    return calculateCrossExchangeArbitrage(filteredBithumb, executableDexTickers, {
       leftFeePct: bithumbFeePct,
       rightFeePct: 0.3,
       rightQuoteToKrw: usdtKrwRate,
       leftLabel: "Bithumb Spot",
       rightLabel: "Solana DEX",
     });
-  }, [bithumbSpotTickers, solanaDexTickers, usdtKrwRate, bithumbFeePct, minVolumeUsdt]);
+  }, [bithumbSpotTickers, solanaDexExecutableSymbols, solanaDexTickers, usdtKrwRate, bithumbFeePct, minVolumeUsdt]);
 
   const okxInternalOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
     return calculateArbitrage(okxSpotTickers, okxPerpTickers, okxFeePct);
@@ -1373,6 +1402,33 @@ export default function Home() {
       return acc;
     }, {});
   }, [solanaDexTickers]);
+
+  const solanaDexExecutionRows = useMemo<DexExecutionRow[]>(() => {
+    return solanaDexTickers
+      .flatMap((ticker) => {
+        const dexToken = getDexTokenBySymbol(ticker.base);
+        if (!dexToken) return [];
+
+        const execution = getDexExecutionStatus(dexToken, bithumbTransferStatus[ticker.base]);
+        return [
+          {
+            symbol: ticker.base,
+            chainLabel: dexToken.chainId,
+            status: execution.status,
+            reason: execution.reason,
+            matchedNetworkSummary: formatNetworkSummary(execution.matchedNetworks),
+            depositEnabled: execution.depositEnabled,
+            withdrawEnabled: execution.withdrawEnabled,
+            liquidityUsd: ticker.metadata?.liquidityUsd,
+            sourceUrl: ticker.metadata?.sourceUrl,
+          },
+        ];
+      })
+      .sort((left, right) => {
+        const statusRank = { executable: 0, "reference-only": 1, blocked: 2 } as const;
+        return statusRank[left.status] - statusRank[right.status] || left.symbol.localeCompare(right.symbol);
+      });
+  }, [bithumbTransferStatus, solanaDexTickers]);
   const foreignPriceMapBySourceTitle = useMemo<Record<string, ForeignPriceMap>>(() => {
     return {
       "Bithumb KRW vs OKX Spot": okxSpotPriceMap,
@@ -2466,9 +2522,72 @@ export default function Home() {
           title="현물과 현물 갭 (CEX-DEX)"
           description="중앙화 거래소 현물과 DEX 현물 가격을 비교하는 영역입니다. 체인 호환성과 입출금 상태를 먼저 보고, 그 다음 가격 차이를 해석하는 흐름에 맞췄습니다."
         >
+          <div className="mb-4 grid gap-3 md:grid-cols-3">
+            <SummaryCard
+              label="실행 가능"
+              value={solanaDexExecutionRows.filter((row) => row.status === "executable").length.toLocaleString()}
+              hint="빗썸과 Solana 공통 네트워크 입출금 가능"
+            />
+            <SummaryCard
+              label="참고용"
+              value={solanaDexExecutionRows.filter((row) => row.status === "reference-only").length.toLocaleString()}
+              hint="공통 네트워크는 있으나 상태 미완전"
+            />
+            <SummaryCard
+              label="제외"
+              value={solanaDexExecutionRows.filter((row) => row.status === "blocked").length.toLocaleString()}
+              hint="공통 네트워크가 없어 비교 제외"
+            />
+          </div>
+
+          <div className="mb-5 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+            <div className="border-b border-white/10 px-4 py-3">
+              <div className="text-sm font-semibold text-white">DEX 실행 가능성 점검</div>
+              <div className="mt-1 text-xs text-slate-400">가격 비교 전에 빗썸과 Solana 네트워크가 실제로 맞는 토큰만 먼저 추립니다.</div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-xs text-slate-300">
+                <thead className="bg-white/5 text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">토큰</th>
+                    <th className="px-4 py-3 font-medium">체인</th>
+                    <th className="px-4 py-3 font-medium">공통 네트워크</th>
+                    <th className="px-4 py-3 font-medium">입출금</th>
+                    <th className="px-4 py-3 font-medium">판정</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {solanaDexExecutionRows.map((row) => {
+                    const tone =
+                      row.status === "executable"
+                        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+                        : row.status === "reference-only"
+                          ? "border-amber-300/20 bg-amber-400/10 text-amber-100"
+                          : "border-rose-400/20 bg-rose-500/10 text-rose-200";
+
+                    return (
+                      <tr key={row.symbol}>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-white">{row.symbol}</div>
+                          {row.liquidityUsd ? <div className="mt-1 text-[11px] text-slate-500">Liquidity ${row.liquidityUsd.toLocaleString()}</div> : null}
+                        </td>
+                        <td className="px-4 py-3 text-slate-400">{row.chainLabel}</td>
+                        <td className="px-4 py-3 text-slate-400">{row.matchedNetworkSummary}</td>
+                        <td className="px-4 py-3 text-slate-400">출금 {row.withdrawEnabled ? "가능" : "불가"} · 입금 {row.depositEnabled ? "가능" : "불가"}</td>
+                        <td className="px-4 py-3">
+                          <div className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone}`}>{row.reason}</div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <OpportunitySection
             title="Bithumb KRW vs Solana DEX"
-            description="빗썸에서 Solana 네트워크를 지원하는 코인 중, Jupiter에서 검증된 민트 주소가 하나로 확인되는 토큰만 Solana DEX와 비교합니다."
+            description="실행 가능 판정을 통과한 Solana 토큰만 빗썸과 비교합니다. 즉 가격차보다 먼저 공통 네트워크 조건을 통과한 후보만 보입니다."
             opportunities={topBithumbSolanaDex}
             loading={loading}
             marketMode="krw-cross"
@@ -3519,6 +3638,4 @@ function NetworkStatusCard({ label, status }: { label: string; status?: Transfer
     </div>
   );
 }
-
-
 
