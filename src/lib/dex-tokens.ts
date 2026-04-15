@@ -8,6 +8,7 @@ export type DexTokenMetadata = {
   decimals?: number;
   cexSymbols?: string[];
   tags?: string[];
+  notes?: string;
 };
 
 export const DEX_TOKEN_REGISTRY: DexTokenMetadata[] = [
@@ -18,6 +19,7 @@ export const DEX_TOKEN_REGISTRY: DexTokenMetadata[] = [
     contractAddress: "CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump",
     cexSymbols: ["GOAT"],
     tags: ["solana"],
+    notes: "Bithumb Solana multichain 대상 확인용",
   },
   {
     symbol: "BONK",
@@ -26,6 +28,7 @@ export const DEX_TOKEN_REGISTRY: DexTokenMetadata[] = [
     contractAddress: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
     cexSymbols: ["BONK"],
     tags: ["solana", "meme"],
+    notes: "대표 Solana 밈 토큰",
   },
   {
     symbol: "JUP",
@@ -34,6 +37,7 @@ export const DEX_TOKEN_REGISTRY: DexTokenMetadata[] = [
     contractAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
     cexSymbols: ["JUP"],
     tags: ["solana", "dex"],
+    notes: "Jupiter 생태계 토큰",
   },
 ];
 

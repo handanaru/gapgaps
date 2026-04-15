@@ -82,11 +82,14 @@ type DexExecutionRow = {
   chainLabel: string;
   status: "executable" | "reference-only" | "blocked";
   reason: string;
+  executionCode: string;
   matchedNetworkSummary: string;
   depositEnabled: boolean;
   withdrawEnabled: boolean;
   liquidityUsd?: number;
   sourceUrl?: string;
+  contractAddress?: string;
+  notes?: string;
 };
 type WorkflowStep = "idle" | "detected" | "quantity-approved" | "auth-approved" | "executed";
 type WorkflowCandidate = {
@@ -1416,11 +1419,14 @@ export default function Home() {
             chainLabel: dexToken.chainId,
             status: execution.status,
             reason: execution.reason,
+            executionCode: execution.code,
             matchedNetworkSummary: formatNetworkSummary(execution.matchedNetworks),
             depositEnabled: execution.depositEnabled,
             withdrawEnabled: execution.withdrawEnabled,
             liquidityUsd: ticker.metadata?.liquidityUsd,
             sourceUrl: ticker.metadata?.sourceUrl,
+            contractAddress: dexToken.contractAddress,
+            notes: dexToken.notes,
           },
         ];
       })
@@ -2550,7 +2556,7 @@ export default function Home() {
                 <thead className="bg-white/5 text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-medium">토큰</th>
-                    <th className="px-4 py-3 font-medium">체인</th>
+                    <th className="px-4 py-3 font-medium">체인 / 주소</th>
                     <th className="px-4 py-3 font-medium">공통 네트워크</th>
                     <th className="px-4 py-3 font-medium">입출금</th>
                     <th className="px-4 py-3 font-medium">판정</th>
@@ -2576,6 +2582,7 @@ export default function Home() {
                         <td className="px-4 py-3 text-slate-400">출금 {row.withdrawEnabled ? "가능" : "불가"} · 입금 {row.depositEnabled ? "가능" : "불가"}</td>
                         <td className="px-4 py-3">
                           <div className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone}`}>{row.reason}</div>
+                          <div className="mt-1 text-[11px] text-slate-500">code: {row.executionCode}</div>
                         </td>
                       </tr>
                     );
@@ -3638,4 +3645,3 @@ function NetworkStatusCard({ label, status }: { label: string; status?: Transfer
     </div>
   );
 }
-

@@ -2,6 +2,15 @@ import { normalizeNetworkName } from "@/lib/networks";
 import { DexTokenMetadata } from "@/lib/dex-tokens";
 import { TransferNetworkStatus, TransferStatus } from "@/lib/types";
 
+export type DexExecutionCode =
+  | "chain-unresolved"
+  | "missing-cex-status"
+  | "network-mismatch"
+  | "withdraw-disabled"
+  | "deposit-disabled"
+  | "deposit-withdraw-disabled"
+  | "ready";
+
 export type DexExecutionStatus = {
   symbol: string;
   chainId: string;
@@ -11,6 +20,7 @@ export type DexExecutionStatus = {
   withdrawEnabled: boolean;
   executable: boolean;
   status: "executable" | "reference-only" | "blocked";
+  code: DexExecutionCode;
   reason: string;
 };
 
@@ -39,7 +49,23 @@ export function getDexExecutionStatus(dexToken: DexTokenMetadata, cexStatus: Tra
       withdrawEnabled: false,
       executable: false,
       status: "blocked",
+      code: "chain-unresolved",
       reason: "DEX 체인 정규화 실패",
+    };
+  }
+
+  if (!cexStatus?.networks?.length) {
+    return {
+      symbol: dexToken.symbol,
+      chainId: dexToken.chainId,
+      normalizedChain,
+      matchedNetworks: [],
+      depositEnabled: false,
+      withdrawEnabled: false,
+      executable: false,
+      status: "reference-only",
+      code: "missing-cex-status",
+      reason: "CEX 전송 상태 데이터 없음",
     };
   }
 
@@ -53,6 +79,7 @@ export function getDexExecutionStatus(dexToken: DexTokenMetadata, cexStatus: Tra
       withdrawEnabled: false,
       executable: false,
       status: "blocked",
+      code: "network-mismatch",
       reason: "공통 네트워크 없음",
     };
   }
@@ -67,7 +94,38 @@ export function getDexExecutionStatus(dexToken: DexTokenMetadata, cexStatus: Tra
       withdrawEnabled,
       executable: true,
       status: "executable",
+      code: "ready",
       reason: "공통 네트워크 입출금 가능",
+    };
+  }
+
+  if (!withdrawEnabled && !depositEnabled) {
+    return {
+      symbol: dexToken.symbol,
+      chainId: dexToken.chainId,
+      normalizedChain,
+      matchedNetworks,
+      depositEnabled,
+      withdrawEnabled,
+      executable: false,
+      status: "reference-only",
+      code: "deposit-withdraw-disabled",
+      reason: "공통 네트워크는 있으나 입출금 모두 불가",
+    };
+  }
+
+  if (!withdrawEnabled) {
+    return {
+      symbol: dexToken.symbol,
+      chainId: dexToken.chainId,
+      normalizedChain,
+      matchedNetworks,
+      depositEnabled,
+      withdrawEnabled,
+      executable: false,
+      status: "reference-only",
+      code: "withdraw-disabled",
+      reason: "빗썸 출금 불가",
     };
   }
 
@@ -80,6 +138,7 @@ export function getDexExecutionStatus(dexToken: DexTokenMetadata, cexStatus: Tra
     withdrawEnabled,
     executable: false,
     status: "reference-only",
-    reason: "공통 네트워크는 있으나 입출금 상태 미완전",
+    code: "deposit-disabled",
+    reason: "반대편 입금 불가",
   };
 }
