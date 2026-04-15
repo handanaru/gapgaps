@@ -3075,6 +3075,36 @@ function OpportunityDetailModal({ selection, onClose }: { selection: Opportunity
             <div className="mt-3 text-xs text-amber-200/90">주의: {[row.transferStatusConfig?.leftNotice, row.transferStatusConfig?.rightNotice].filter(Boolean).join(' / ')}</div>
           ) : null}
         </div>
+
+        <div className="mt-4 rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-4">
+          <div className="text-sm font-medium text-white">실행 절차</div>
+          <div className="mt-3 grid gap-3 lg:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+              <div className="text-xs text-slate-500">1단계</div>
+              <div className="mt-1 text-sm font-semibold text-white">{row.opportunity.buyExchange}에서 매수</div>
+              <div className="mt-2 text-xs text-slate-400">현재 기준 매수 가격 {formatPrice(row.opportunity.buyPrice)}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+              <div className="text-xs text-slate-500">2단계</div>
+              <div className="mt-1 text-sm font-semibold text-white">공통 네트워크로 전송</div>
+              <div className="mt-2 text-xs text-slate-400">{matchedNetworks.length ? `${matchedNetworks.map((network) => network.networkLabel).join(', ')} 중 하나를 사용` : '현재 공개 정보만으로는 공통 전송 네트워크를 확인하지 못했습니다.'}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+              <div className="text-xs text-slate-500">3단계</div>
+              <div className="mt-1 text-sm font-semibold text-white">{row.opportunity.sellExchange}에서 매도</div>
+              <div className="mt-2 text-xs text-slate-400">현재 기준 매도 가격 {formatPrice(row.opportunity.sellPrice)} · 예상 순수익 {formatPct(row.opportunity.estimatedNetPct)}</div>
+            </div>
+          </div>
+          <div className="mt-3 text-xs text-cyan-100/90">
+            {executionStatus.label === '실행 가능'
+              ? '현재 공개 입출금 상태 기준으로는 실행 가능한 후보로 볼 수 있습니다. 실제 주문 전 최종 호가와 체인 수수료는 다시 확인하세요.'
+              : executionStatus.label === '체인 불일치'
+                ? '가격 차이는 있어도 현재 공개 상태 기준으로 공통 네트워크가 맞지 않아 즉시 실행은 어렵습니다.'
+                : executionStatus.label === '입출금 불가'
+                  ? '현재 공개 상태상 입금 또는 출금이 막혀 있어 실행 전 상태 복구를 기다려야 합니다.'
+                  : '상태 정보가 불완전하므로 실제 실행 전 거래소 앱/웹에서 입출금 상태를 반드시 다시 확인하세요.'}
+          </div>
+        </div>
       </div>
     </div>
   );
