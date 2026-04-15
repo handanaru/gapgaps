@@ -1,31 +1,19 @@
 import { NextResponse } from "next/server";
 import { normalizeBinanceFuturesTicker } from "@/lib/exchanges";
-
-const BINANCE_FUTURES_URL = "https://fapi.binance.com/fapi/v1/ticker/price";
-const BINANCE_FUTURES_BOOK_URL = "https://fapi.binance.com/fapi/v1/ticker/bookTicker";
-const BINANCE_FUTURES_INFO_URL = "https://fapi.binance.com/fapi/v1/exchangeInfo";
+import {
+  BINANCE_FUTURES_BOOK_URLS,
+  BINANCE_FUTURES_INFO_URLS,
+  BINANCE_FUTURES_PRICE_URLS,
+  fetchFirstJson,
+} from "@/lib/binance-endpoints";
 
 export async function GET() {
   try {
-    const [priceRes, bookRes, infoRes] = await Promise.all([
-      fetch(BINANCE_FUTURES_URL, { headers: { Accept: "application/json" }, next: { revalidate: 0 } }),
-      fetch(BINANCE_FUTURES_BOOK_URL, { headers: { Accept: "application/json" }, next: { revalidate: 0 } }),
-      fetch(BINANCE_FUTURES_INFO_URL, { headers: { Accept: "application/json" }, next: { revalidate: 0 } }),
+    const [{ json: raw, source: priceSource }, { json: book, source: bookSource }, { json: info, source: infoSource }] = await Promise.all([
+      fetchFirstJson<{ symbol: string; price: string }[]>(BINANCE_FUTURES_PRICE_URLS),
+      fetchFirstJson<{ symbol: string; bidPrice?: string; askPrice?: string }[]>(BINANCE_FUTURES_BOOK_URLS),
+      fetchFirstJson<{ symbols: { symbol: string; status: string; contractType: string }[] }>(BINANCE_FUTURES_INFO_URLS),
     ]);
-
-    if (!priceRes.ok) {
-      return NextResponse.json({ success: false, error: `Binance futures fetch failed: ${priceRes.status}` }, { status: 502 });
-    }
-    if (!bookRes.ok) {
-      return NextResponse.json({ success: false, error: `Binance futures bookTicker failed: ${bookRes.status}` }, { status: 502 });
-    }
-    if (!infoRes.ok) {
-      return NextResponse.json({ success: false, error: `Binance futures exchangeInfo failed: ${infoRes.status}` }, { status: 502 });
-    }
-
-    const raw = (await priceRes.json()) as { symbol: string; price: string }[];
-    const book = (await bookRes.json()) as { symbol: string; bidPrice?: string; askPrice?: string }[];
-    const info = (await infoRes.json()) as { symbols: { symbol: string; status: string; contractType: string }[] };
     const bookMap = new Map(book.map((item) => [item.symbol, item]));
 
     const activeSymbols = new Set(
@@ -49,7 +37,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data,
-      source: BINANCE_FUTURES_URL,
+      source: { price: priceSource, bookTicker: bookSource, exchangeInfo: infoSource },
       count: data.length,
       fetchedAt: Date.now(),
     });
