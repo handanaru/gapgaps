@@ -1078,12 +1078,39 @@ export default function Home() {
       rightLabel: "Gate.io Perp",
     });
   }, [binanceFuturesTickers, gateIoPerpTickers, binanceFeePct, gateIoFeePct]);
+  const okxBybitPerpOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
+    return calculateCrossExchangeArbitrage(okxPerpTickers, bybitPerpTickers, {
+      leftFeePct: okxFeePct,
+      rightFeePct: bybitFeePct,
+      leftLabel: "OKX Swap",
+      rightLabel: "Bybit Perp",
+    });
+  }, [okxPerpTickers, bybitPerpTickers, okxFeePct, bybitFeePct]);
+  const okxGateIoPerpOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
+    return calculateCrossExchangeArbitrage(okxPerpTickers, gateIoPerpTickers, {
+      leftFeePct: okxFeePct,
+      rightFeePct: gateIoFeePct,
+      leftLabel: "OKX Swap",
+      rightLabel: "Gate.io Perp",
+    });
+  }, [okxPerpTickers, gateIoPerpTickers, okxFeePct, gateIoFeePct]);
+  const bybitGateIoPerpOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
+    return calculateCrossExchangeArbitrage(bybitPerpTickers, gateIoPerpTickers, {
+      leftFeePct: bybitFeePct,
+      rightFeePct: gateIoFeePct,
+      leftLabel: "Bybit Perp",
+      rightLabel: "Gate.io Perp",
+    });
+  }, [bybitPerpTickers, gateIoPerpTickers, bybitFeePct, gateIoFeePct]);
 
   const topBinance = binanceInternalOpportunities.slice(0, 15);
   const topOkx = okxInternalOpportunities.slice(0, 15);
   const topPerpPerp = binanceOkxPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topPerpPerpBybit = binanceBybitPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topPerpPerpGateIo = binanceGateIoPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
+  const topOkxBybitPerp = okxBybitPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
+  const topOkxGateIoPerp = okxGateIoPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
+  const topBybitGateIoPerp = bybitGateIoPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topCrossExchange = bithumbOkxOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topBithumbBinance = bithumbBinanceOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topBithumbBybit = bithumbBybitOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
@@ -1372,6 +1399,9 @@ export default function Home() {
     pushRows("perp-perp", "Binance Perp vs OKX Swap", topPerpPerp);
     pushRows("perp-perp", "Binance Perp vs Bybit Perp", topPerpPerpBybit);
     pushRows("perp-perp", "Binance Perp vs Gate.io Perp", topPerpPerpGateIo);
+    pushRows("perp-perp", "OKX Swap vs Bybit Perp", topOkxBybitPerp);
+    pushRows("perp-perp", "OKX Swap vs Gate.io Perp", topOkxGateIoPerp);
+    pushRows("perp-perp", "Bybit Perp vs Gate.io Perp", topBybitGateIoPerp);
     pushRows("cex-cex", "Bithumb KRW vs OKX Spot", topCrossExchange, {
       leftExchangeLabel: "빗썸",
       leftStatuses: bithumbTransferStatus,
@@ -1443,6 +1473,9 @@ export default function Home() {
     topPerpPerp,
     topPerpPerpBybit,
     topPerpPerpGateIo,
+    topOkxBybitPerp,
+    topOkxGateIoPerp,
+    topBybitGateIoPerp,
     topCrossExchange,
     topBithumbBinance,
     topBithumbBybit,
@@ -2082,6 +2115,33 @@ export default function Home() {
             loading={loading}
             marketMode="cross"
             onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Binance Perp vs Gate.io Perp", opportunity))}
+            initialCollapsed
+          />
+          <OpportunitySection
+            title="OKX Swap vs Bybit Perp"
+            description="OKX와 Bybit 무기한 선물 가격 차이를 비교합니다. 바이낸스 축 외에 주요 해외 선물 거래소끼리의 괴리를 확인합니다."
+            opportunities={topOkxBybitPerp}
+            loading={loading}
+            marketMode="cross"
+            onSelectChart={(opportunity) => setSelectedChart(getChartSelection("OKX Swap vs Bybit Perp", opportunity))}
+            initialCollapsed
+          />
+          <OpportunitySection
+            title="OKX Swap vs Gate.io Perp"
+            description="OKX와 Gate.io 무기한 선물 가격 차이를 비교합니다. 거래소 간 선선갭을 더 촘촘하게 확인하는 보조 섹션입니다."
+            opportunities={topOkxGateIoPerp}
+            loading={loading}
+            marketMode="cross"
+            onSelectChart={(opportunity) => setSelectedChart(getChartSelection("OKX Swap vs Gate.io Perp", opportunity))}
+            initialCollapsed
+          />
+          <OpportunitySection
+            title="Bybit Perp vs Gate.io Perp"
+            description="Bybit와 Gate.io 무기한 선물 가격 차이를 비교합니다. 바이낸스를 제외한 선물 거래소 간 갭까지 한 번에 스캔할 수 있습니다."
+            opportunities={topBybitGateIoPerp}
+            loading={loading}
+            marketMode="cross"
+            onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Bybit Perp vs Gate.io Perp", opportunity))}
             initialCollapsed
           />
         </CategorySection>
