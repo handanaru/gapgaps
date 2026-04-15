@@ -1980,6 +1980,9 @@ export default function Home() {
                         ? formatNetworkSummary(getMatchedNetworks(leftTransferStatus, rightTransferStatus))
                         : null;
                     const formatBoardPrice = (exchangeLabel: string, value: number) => {
+                      if (row.kind === "perp-perp") {
+                        return formatOriginalPrice(value, "USDT");
+                      }
                       if (exchangeLabel.includes("Bithumb") || exchangeLabel.includes("Upbit")) {
                         return formatPrice(value);
                       }
