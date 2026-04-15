@@ -1171,14 +1171,24 @@ export default function Home() {
     [bithumbTransferStatus, gateIoTransferStatus, topBithumbGateIo]
   );
   const opportunityPreviewConfigs = useMemo<OpportunityPreviewConfig[]>(() => {
+    const executableBithumbBinance = topBithumbBinance
+      .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, binanceTransferStatus))
+      .slice(0, 3);
+    const executableBithumbOkx = topCrossExchange
+      .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus))
+      .slice(0, 3);
+    const executableBithumbGateIo = topBithumbGateIo
+      .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, gateIoTransferStatus))
+      .slice(0, 3);
+
     return [
       {
         id: "binance",
         title: "Bithumb vs Binance",
-        description: "김프 방향과 실행 가능성을 가장 먼저 보는 대표 루트",
-        opportunities: topBithumbBinance.slice(0, 3),
+        description: "실행 가능한 김프 후보만 먼저 보여주는 대표 루트",
+        opportunities: executableBithumbBinance,
         accentClassName: "from-amber-300/20 to-transparent",
-        badgeLabel: executableBinanceCount > 0 ? `실행 가능 ${executableBinanceCount}` : "상태 확인 필요",
+        badgeLabel: executableBinanceCount > 0 ? `실행 가능 ${executableBinanceCount}` : "실행 가능 후보 없음",
         badgeTone: executableBinanceCount > 0 ? "emerald" : "amber",
         detailAnchor: "bithumb-binance",
         detailTitle: "Bithumb KRW vs Binance Spot",
@@ -1186,49 +1196,37 @@ export default function Home() {
       {
         id: "okx",
         title: "Bithumb vs OKX",
-        description: "대체 거래소 관점으로 볼 때 가장 빠른 보조 루트",
-        opportunities: topCrossExchange.slice(0, 3),
+        description: "실행 가능한 대체 거래소 후보만 먼저 보여주는 보조 루트",
+        opportunities: executableBithumbOkx,
         accentClassName: "from-cyan-300/20 to-transparent",
-        badgeLabel: executableOkxCount > 0 ? `실행 가능 ${executableOkxCount}` : "체인 확인 필요",
+        badgeLabel: executableOkxCount > 0 ? `실행 가능 ${executableOkxCount}` : "실행 가능 후보 없음",
         badgeTone: executableOkxCount > 0 ? "emerald" : "amber",
         detailAnchor: "bithumb-okx",
         detailTitle: "Bithumb KRW vs OKX Spot",
       },
       {
-        id: "bybit",
-        title: "Bithumb vs Bybit",
-        description: "가격 비교는 가능하지만 전송 상태는 공개 정보 한계가 있음",
-        opportunities: topBithumbBybit.slice(0, 3),
-        accentClassName: "from-fuchsia-300/20 to-transparent",
-        badgeLabel: "상태 미확인",
-        badgeTone: "rose",
-        detailAnchor: "bithumb-bybit",
-        detailTitle: "Bithumb KRW vs Bybit Spot",
-      },
-      {
         id: "gateio",
         title: "Bithumb vs Gate.io",
-        description: "체인 상태까지 함께 볼 수 있는 대체 현물 루트",
-        opportunities: topBithumbGateIo.slice(0, 3),
+        description: "체인 상태까지 확인된 실행 가능 후보만 먼저 보여줍니다",
+        opportunities: executableBithumbGateIo,
         accentClassName: "from-emerald-300/20 to-transparent",
-        badgeLabel: executableGateIoCount > 0 ? `실행 가능 ${executableGateIoCount}` : "체인 확인 필요",
+        badgeLabel: executableGateIoCount > 0 ? `실행 가능 ${executableGateIoCount}` : "실행 가능 후보 없음",
         badgeTone: executableGateIoCount > 0 ? "emerald" : "amber",
         detailAnchor: "bithumb-gateio",
         detailTitle: "Bithumb KRW vs Gate.io Spot",
       },
-      {
-        id: "upbit-binance",
-        title: "Upbit vs Binance",
-        description: "업비트 원화축으로 보는 대표 해외 현물 비교",
-        opportunities: topUpbitBinance.slice(0, 3),
-        accentClassName: "from-violet-300/20 to-transparent",
-        badgeLabel: "업비트 상태 미확인",
-        badgeTone: "slate",
-        detailAnchor: "upbit-binance",
-        detailTitle: "Upbit KRW vs Binance Spot",
-      },
     ];
-  }, [executableBinanceCount, executableGateIoCount, executableOkxCount, topBithumbBinance, topBithumbBybit, topBithumbGateIo, topCrossExchange, topUpbitBinance]);
+  }, [
+    bithumbTransferStatus,
+    binanceTransferStatus,
+    gateIoTransferStatus,
+    executableBinanceCount,
+    executableGateIoCount,
+    executableOkxCount,
+    topBithumbBinance,
+    topBithumbGateIo,
+    topCrossExchange,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) {
