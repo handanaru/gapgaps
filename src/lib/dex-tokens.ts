@@ -73,7 +73,7 @@ export const DEX_TOKEN_REGISTRY: DexTokenMetadata[] = [
     contractAddress: "HZ1JovNiVvGrGNiiYv7oMBBceM2xj7zqQK4qpP62b4jk",
     cexSymbols: ["PYTH"],
     tags: ["solana", "oracle"],
-    notes: "대형 Solana 오라클 토큰 · 현재 유동성 5만달러 미만",
+    notes: "대형 Solana 오라클 토큰",
   },
   {
     symbol: "RAY",
@@ -109,7 +109,7 @@ export const DEX_TOKEN_REGISTRY: DexTokenMetadata[] = [
     contractAddress: "7GCihgDB8fe6KnxXJo84rWwJ7cKxYJv7U8G4JwqJ3G9a",
     cexSymbols: ["POPCAT"],
     tags: ["solana", "meme"],
-    notes: "Solana 밈코인 고유동성 후보",
+    notes: "Solana 밈코인 후보",
   },
   {
     symbol: "PENGU",

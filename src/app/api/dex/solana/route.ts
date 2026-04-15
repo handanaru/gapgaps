@@ -7,7 +7,7 @@ const BITHUMB_SPOT_URL = "https://api.bithumb.com/public/ticker/ALL_KRW";
 const BITHUMB_MULTICHAIN_URL = "https://api.bithumb.com/public/assetsstatus/multichain/ALL";
 const JUPITER_SEARCH_URL = "https://api.jup.ag/tokens/v2/search?query=";
 const DEX_TOKEN_URL = "https://api.dexscreener.com/tokens/v1/solana/";
-const MIN_DEX_LIQUIDITY_USD = 10_000;
+const MIN_DEX_LIQUIDITY_USD = 50_000;
 const JUPITER_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const JUPITER_RETRY_DELAY_MS = 600;
 const JUPITER_CONCURRENCY = 2;
