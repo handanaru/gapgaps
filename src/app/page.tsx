@@ -1610,6 +1610,27 @@ export default function Home() {
           {error && <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">오류: {error}</div>}
         </header>
 
+        <nav className="sticky top-3 z-30 -mx-1 overflow-x-auto rounded-2xl border border-white/10 bg-slate-950/85 px-3 py-3 backdrop-blur lg:hidden">
+          <div className="flex min-w-max items-center gap-2">
+            {[
+              { href: "#overview", label: "개요" },
+              { href: "#basis", label: "현선갭" },
+              { href: "#perp-perp", label: "선선갭" },
+              { href: "#cex-cex", label: "국내↔해외 CEX" },
+              { href: "#cex-dex", label: "CEX↔DEX" },
+              { href: "#matrix", label: "매트릭스" },
+            ].map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium whitespace-nowrap text-slate-200 transition hover:border-cyan-300/30 hover:bg-cyan-400/10 hover:text-cyan-100"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </nav>
+
         <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
           <div className="rounded-[32px] border border-cyan-400/15 bg-gradient-to-br from-cyan-400/12 via-slate-950 to-slate-950 p-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
