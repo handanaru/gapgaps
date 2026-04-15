@@ -145,7 +145,7 @@ type OpportunityPreviewConfig = {
 };
 
 type OpportunityDetailSelection = {
-  row: AggregatedOpportunityRow;
+  rowId: string;
 };
 
 const DEFAULT_BINANCE_TAKER_FEE = 0.05;
@@ -1769,7 +1769,7 @@ export default function Home() {
                   setSelectedChart(getChartSelection(config.detailTitle, opportunity));
                   const row = findOpportunityRow(aggregatedOpportunityRows, config.detailTitle, opportunity);
                   if (row) {
-                    setSelectedDetail({ row });
+                    setSelectedDetail({ rowId: row.id });
                   }
                   document.getElementById(config.detailAnchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
@@ -1997,7 +1997,7 @@ export default function Home() {
                         className="cursor-pointer hover:bg-white/5"
                         onClick={() => {
                           setSelectedChart(getChartSelection(row.sourceTitle, row.opportunity));
-                          setSelectedDetail({ row });
+                          setSelectedDetail({ rowId: row.id });
                         }}
                       >
                         <td className="px-4 py-3">
@@ -2065,7 +2065,7 @@ export default function Home() {
         </section>
 
         <OpportunityChartPanel selection={selectedChart} onClear={() => setSelectedChart(null)} />
-        <OpportunityDetailModal selection={selectedDetail} onClose={() => setSelectedDetail(null)} />
+        <OpportunityDetailModal selection={selectedDetail} rows={aggregatedOpportunityRows} onClose={() => setSelectedDetail(null)} />
 
         <WithdrawalWorkflowSection
           candidate={workflowCandidate}
@@ -3017,10 +3017,11 @@ function SummaryCard({ label, value, hint }: { label: string; value: string; hin
   );
 }
 
-function OpportunityDetailModal({ selection, onClose }: { selection: OpportunityDetailSelection | null; onClose: () => void }) {
+function OpportunityDetailModal({ selection, rows, onClose }: { selection: OpportunityDetailSelection | null; rows: AggregatedOpportunityRow[]; onClose: () => void }) {
   if (!selection) return null;
 
-  const { row } = selection;
+  const row = rows.find((candidate) => candidate.id === selection.rowId);
+  if (!row) return null;
   const transferSymbol = row.opportunity.symbol.replace("/KRW", "");
   const leftStatus = row.transferStatusConfig?.leftStatuses[transferSymbol];
   const rightStatus = row.transferStatusConfig?.rightStatuses?.[transferSymbol];
