@@ -40,15 +40,6 @@ export const DEX_TOKEN_REGISTRY: DexTokenMetadata[] = [
     notes: "Jupiter 생태계 토큰",
   },
   {
-    symbol: "JTO",
-    name: "Jito",
-    chainId: "solana",
-    contractAddress: "jtojtomepa8beP8AuQc6eXt5FriJwfFMw8EhmWz6wQL",
-    cexSymbols: ["JTO"],
-    tags: ["solana", "staking"],
-    notes: "Jito liquid staking / MEV",
-  },
-  {
     symbol: "KMNO",
     name: "Kamino",
     chainId: "solana",
