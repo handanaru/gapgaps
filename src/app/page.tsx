@@ -1332,7 +1332,7 @@ export default function Home() {
       return acc;
     }, {});
   }, [solanaDexTickers]);
-  const foreignPriceMapBySourceTitle = useMemo(() => {
+  const foreignPriceMapBySourceTitle = useMemo<Record<string, ForeignPriceMap>>(() => {
     return {
       "Bithumb KRW vs OKX Spot": okxSpotPriceMap,
       "Upbit KRW vs OKX Spot": okxSpotPriceMap,
@@ -1343,7 +1343,7 @@ export default function Home() {
       "Bithumb KRW vs Gate.io Spot": gateIoSpotPriceMap,
       "Upbit KRW vs Gate.io Spot": gateIoSpotPriceMap,
       "Bithumb KRW vs Solana DEX": solanaDexPriceMap,
-    } satisfies Record<string, ForeignPriceMap>;
+    };
   }, [binanceSpotPriceMap, bybitSpotPriceMap, gateIoSpotPriceMap, okxSpotPriceMap, solanaDexPriceMap]);
   const aggregatedOpportunityRows = useMemo<AggregatedOpportunityRow[]>(() => {
     const rows: AggregatedOpportunityRow[] = [];
