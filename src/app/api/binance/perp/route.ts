@@ -42,6 +42,18 @@ export async function GET() {
       fetchedAt: Date.now(),
     });
   } catch (error) {
-    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const isBlocked = message.includes("403") || message.includes("451");
+
+    return NextResponse.json(
+      {
+        success: false,
+        disabled: isBlocked,
+        data: [],
+        error: message,
+        fetchedAt: Date.now(),
+      },
+      { status: isBlocked ? 200 : 500 }
+    );
   }
 }
