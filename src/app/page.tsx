@@ -140,6 +140,8 @@ type OpportunityPreviewConfig = {
   accentClassName: string;
   badgeLabel: string;
   badgeTone: "emerald" | "amber" | "rose" | "slate";
+  detailAnchor: string;
+  detailTitle: string;
 };
 
 const DEFAULT_BINANCE_TAKER_FEE = 0.05;
@@ -1161,6 +1163,8 @@ export default function Home() {
         accentClassName: "from-amber-300/20 to-transparent",
         badgeLabel: executableBinanceCount > 0 ? `실행 가능 ${executableBinanceCount}` : "상태 확인 필요",
         badgeTone: executableBinanceCount > 0 ? "emerald" : "amber",
+        detailAnchor: "bithumb-binance",
+        detailTitle: "Bithumb KRW vs Binance Spot",
       },
       {
         id: "okx",
@@ -1170,6 +1174,8 @@ export default function Home() {
         accentClassName: "from-cyan-300/20 to-transparent",
         badgeLabel: executableOkxCount > 0 ? `실행 가능 ${executableOkxCount}` : "체인 확인 필요",
         badgeTone: executableOkxCount > 0 ? "emerald" : "amber",
+        detailAnchor: "bithumb-okx",
+        detailTitle: "Bithumb KRW vs OKX Spot",
       },
       {
         id: "bybit",
@@ -1179,6 +1185,8 @@ export default function Home() {
         accentClassName: "from-fuchsia-300/20 to-transparent",
         badgeLabel: "상태 미확인",
         badgeTone: "rose",
+        detailAnchor: "bithumb-bybit",
+        detailTitle: "Bithumb KRW vs Bybit Spot",
       },
       {
         id: "gateio",
@@ -1188,6 +1196,8 @@ export default function Home() {
         accentClassName: "from-emerald-300/20 to-transparent",
         badgeLabel: executableGateIoCount > 0 ? `실행 가능 ${executableGateIoCount}` : "체인 확인 필요",
         badgeTone: executableGateIoCount > 0 ? "emerald" : "amber",
+        detailAnchor: "bithumb-gateio",
+        detailTitle: "Bithumb KRW vs Gate.io Spot",
       },
       {
         id: "upbit-binance",
@@ -1197,6 +1207,8 @@ export default function Home() {
         accentClassName: "from-violet-300/20 to-transparent",
         badgeLabel: "업비트 상태 미확인",
         badgeTone: "slate",
+        detailAnchor: "upbit-binance",
+        detailTitle: "Upbit KRW vs Binance Spot",
       },
     ];
   }, [executableBinanceCount, executableGateIoCount, executableOkxCount, topBithumbBinance, topBithumbBybit, topBithumbGateIo, topCrossExchange, topUpbitBinance]);
@@ -1733,7 +1745,14 @@ export default function Home() {
           </div>
           <div className="grid gap-4 xl:grid-cols-2">
             {opportunityPreviewConfigs.map((config) => (
-              <OpportunityPreviewPanel key={config.id} config={config} />
+              <OpportunityPreviewPanel
+                key={config.id}
+                config={config}
+                onOpenDetail={(opportunity) => {
+                  setSelectedChart(getChartSelection(config.detailTitle, opportunity));
+                  document.getElementById(config.detailAnchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              />
             ))}
           </div>
         </section>
@@ -2891,7 +2910,7 @@ function HeroMetricCard({
   );
 }
 
-function OpportunityPreviewPanel({ config }: { config: OpportunityPreviewConfig }) {
+function OpportunityPreviewPanel({ config, onOpenDetail }: { config: OpportunityPreviewConfig; onOpenDetail: (opportunity: ArbitrageOpportunity) => void }) {
   const badgeClassName =
     config.badgeTone === "emerald"
       ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-100"
@@ -2920,7 +2939,12 @@ function OpportunityPreviewPanel({ config }: { config: OpportunityPreviewConfig 
           <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-4 text-sm text-slate-500">조건에 맞는 후보가 없습니다.</div>
         ) : (
           config.opportunities.map((opportunity) => (
-            <div key={`${config.id}-${opportunity.symbol}-${opportunity.buyExchange}-${opportunity.sellExchange}`} className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-3 sm:px-4 sm:py-4">
+            <button
+              type="button"
+              key={`${config.id}-${opportunity.symbol}-${opportunity.buyExchange}-${opportunity.sellExchange}`}
+              onClick={() => onOpenDetail(opportunity)}
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-3 text-left transition hover:border-cyan-300/30 hover:bg-slate-900 sm:px-4 sm:py-4"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-white sm:text-[15px]">{opportunity.symbol}</div>
@@ -2946,7 +2970,7 @@ function OpportunityPreviewPanel({ config }: { config: OpportunityPreviewConfig 
                   <div className="mt-1 font-mono text-xs text-slate-200">{formatPct(opportunity.gapPct)}</div>
                 </div>
               </div>
-            </div>
+            </button>
           ))
         )}
       </div>
@@ -3485,5 +3509,6 @@ function NetworkStatusCard({ label, status }: { label: string; status?: Transfer
     </div>
   );
 }
+
 
 
