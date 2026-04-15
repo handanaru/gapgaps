@@ -4,6 +4,7 @@ const NETWORK_ALIAS_MAP: Record<string, string> = {
   ARB_ETH: "arbitrum",
   ARBEVM: "arbitrum",
   ARBITRUM: "arbitrum",
+  ARBITRUMONE: "arbitrum",
   ARBNOVA: "arbitrum-nova",
   AVAX_C: "avalanche-c",
   AVAXC: "avalanche-c",
@@ -13,7 +14,10 @@ const NETWORK_ALIAS_MAP: Record<string, string> = {
   BASENET: "base",
   BASE_ETH: "base",
   BASEEVM: "base",
-  BSC: "bsc",
+  BSC: "bnb-smart-chain",
+  BEP20: "bnb-smart-chain",
+  BNB: "bnb-smart-chain",
+  BNBSMARTCHAIN: "bnb-smart-chain",
   BTC: "bitcoin",
   BITCOIN: "bitcoin",
   ADA: "cardano",
@@ -25,14 +29,17 @@ const NETWORK_ALIAS_MAP: Record<string, string> = {
   ETHEREUM: "ethereum",
   LINEA: "linea",
   LINEAETH: "linea",
+  MATIC: "polygon",
+  MATICPOS: "polygon",
+  POL: "polygon",
+  POLYGON: "polygon",
   OP: "optimism",
   OP_ETH: "optimism",
   OPTIMISM: "optimism",
   OSMO: "osmosis",
   OSMOSIS: "osmosis",
-  POL: "polygon",
-  POLYGON: "polygon",
   SOL: "solana",
+  SPL: "solana",
   SOLANA: "solana",
   SUI: "sui",
   TON: "ton",
@@ -44,7 +51,7 @@ const NETWORK_ALIAS_MAP: Record<string, string> = {
 
 export function normalizeNetworkName(value: string | null | undefined) {
   if (!value) return null;
-  const key = value.trim().toUpperCase().replace(/[\s-]+/g, "_");
+  const key = value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   const alias = NETWORK_ALIAS_MAP[key];
   if (alias) return alias;
 
@@ -63,10 +70,7 @@ export function summarizeExecutableNetworks(status: TransferStatus | undefined) 
   return status.networks.filter((network) => network.depositEnabled === true || network.withdrawEnabled === true);
 }
 
-export function getMatchedNetworks(
-  leftStatus: TransferStatus | undefined,
-  rightStatus: TransferStatus | undefined
-) {
+export function getMatchedNetworks(leftStatus: TransferStatus | undefined, rightStatus: TransferStatus | undefined) {
   const leftNetworks = summarizeExecutableNetworks(leftStatus).filter((network) => network.withdrawEnabled === true);
   const rightNetworks = summarizeExecutableNetworks(rightStatus).filter((network) => network.depositEnabled === true);
   const rightSet = new Set(rightNetworks.map((network) => network.normalizedNetwork).filter(Boolean));
@@ -76,6 +80,7 @@ export function getMatchedNetworks(
 
 export function formatNetworkSummary(networks: TransferNetworkStatus[]) {
   if (networks.length === 0) return "네트워크 정보 없음";
+
   return networks
     .slice(0, 3)
     .map((network) => network.networkLabel)

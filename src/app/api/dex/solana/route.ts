@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getDexTokensByChain } from "@/lib/dex-tokens";
 import { normalizeNetworkName } from "@/lib/networks";
 import { NormalizedTicker } from "@/lib/types";
 
@@ -143,12 +144,13 @@ export async function GET() {
     const multichainRaw = (await multichainResponse.json()) as BithumbMultichainResponse;
 
     const bithumbSpotSymbols = new Set(Object.keys(spotRaw.data ?? {}).filter((symbol) => symbol !== "date"));
+    const registeredSolanaSymbols = new Set(getDexTokensByChain("solana").map((token) => token.symbol));
     const solanaSymbols = Array.from(
       new Set(
         (multichainRaw.data ?? [])
           .filter((item) => normalizeNetworkName(item.net_type) === "solana")
           .map((item) => item.currency)
-          .filter((symbol) => bithumbSpotSymbols.has(symbol))
+          .filter((symbol) => bithumbSpotSymbols.has(symbol) && registeredSolanaSymbols.has(symbol))
       )
     );
 
