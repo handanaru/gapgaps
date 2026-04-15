@@ -2090,60 +2090,91 @@ export default function Home() {
           title="선물과 선물 갭 (선선갭)"
           description="거래소 간 선물 가격 차이를 비교하는 영역입니다. 같은 코인의 무기한 계약 가격 괴리를 실행 기준으로 먼저 확인합니다."
         >
-          <OpportunitySection
-            title="Binance Perp vs OKX Swap"
-            description="바이낸스 무기한 선물과 OKX 스왑 가격을 같은 기준으로 비교합니다. 거래소 간 선물 괴리와 체결 가능 갭을 보는 1차 선선갭 섹션입니다."
-            opportunities={topPerpPerp}
-            loading={loading}
-            marketMode="cross"
-            onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Binance Perp vs OKX Swap", opportunity))}
-            initialCollapsed
-          />
-          <OpportunitySection
-            title="Binance Perp vs Bybit Perp"
-            description="바이낸스와 Bybit 무기한 선물 가격 차이를 비교합니다. 해외 선물 거래소 간 괴리를 빠르게 스캔할 수 있습니다."
-            opportunities={topPerpPerpBybit}
-            loading={loading}
-            marketMode="cross"
-            onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Binance Perp vs Bybit Perp", opportunity))}
-            initialCollapsed
-          />
-          <OpportunitySection
-            title="Binance Perp vs Gate.io Perp"
-            description="바이낸스와 Gate.io 무기한 선물 가격 차이를 비교합니다. 보조 거래소 선선갭을 넓게 보는 용도입니다."
-            opportunities={topPerpPerpGateIo}
-            loading={loading}
-            marketMode="cross"
-            onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Binance Perp vs Gate.io Perp", opportunity))}
-            initialCollapsed
-          />
-          <OpportunitySection
-            title="OKX Swap vs Bybit Perp"
-            description="OKX와 Bybit 무기한 선물 가격 차이를 비교합니다. 바이낸스 축 외에 주요 해외 선물 거래소끼리의 괴리를 확인합니다."
-            opportunities={topOkxBybitPerp}
-            loading={loading}
-            marketMode="cross"
-            onSelectChart={(opportunity) => setSelectedChart(getChartSelection("OKX Swap vs Bybit Perp", opportunity))}
-            initialCollapsed
-          />
-          <OpportunitySection
-            title="OKX Swap vs Gate.io Perp"
-            description="OKX와 Gate.io 무기한 선물 가격 차이를 비교합니다. 거래소 간 선선갭을 더 촘촘하게 확인하는 보조 섹션입니다."
-            opportunities={topOkxGateIoPerp}
-            loading={loading}
-            marketMode="cross"
-            onSelectChart={(opportunity) => setSelectedChart(getChartSelection("OKX Swap vs Gate.io Perp", opportunity))}
-            initialCollapsed
-          />
-          <OpportunitySection
-            title="Bybit Perp vs Gate.io Perp"
-            description="Bybit와 Gate.io 무기한 선물 가격 차이를 비교합니다. 바이낸스를 제외한 선물 거래소 간 갭까지 한 번에 스캔할 수 있습니다."
-            opportunities={topBybitGateIoPerp}
-            loading={loading}
-            marketMode="cross"
-            onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Bybit Perp vs Gate.io Perp", opportunity))}
-            initialCollapsed
-          />
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-300/15 bg-slate-950/60 px-3 py-3">
+            <span className="text-xs font-medium text-slate-400">바로가기</span>
+            {[
+              { href: '#perp-binance-okx', label: 'Binance ↔ OKX' },
+              { href: '#perp-binance-bybit', label: 'Binance ↔ Bybit' },
+              { href: '#perp-binance-gateio', label: 'Binance ↔ Gate.io' },
+              { href: '#perp-okx-bybit', label: 'OKX ↔ Bybit' },
+              { href: '#perp-okx-gateio', label: 'OKX ↔ Gate.io' },
+              { href: '#perp-bybit-gateio', label: 'Bybit ↔ Gate.io' },
+            ].map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-300/30 hover:bg-cyan-400/10 hover:text-cyan-100"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+          <div id="perp-binance-okx" className="scroll-mt-28">
+            <OpportunitySection
+              title="Binance Perp vs OKX Swap"
+              description="바이낸스 무기한 선물과 OKX 스왑 가격을 같은 기준으로 비교합니다. 거래소 간 선물 괴리와 체결 가능 갭을 보는 1차 선선갭 섹션입니다."
+              opportunities={topPerpPerp}
+              loading={loading}
+              marketMode="cross"
+              onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Binance Perp vs OKX Swap", opportunity))}
+              initialCollapsed
+            />
+          </div>
+          <div id="perp-binance-bybit" className="scroll-mt-28">
+            <OpportunitySection
+              title="Binance Perp vs Bybit Perp"
+              description="바이낸스와 Bybit 무기한 선물 가격 차이를 비교합니다. 해외 선물 거래소 간 괴리를 빠르게 스캔할 수 있습니다."
+              opportunities={topPerpPerpBybit}
+              loading={loading}
+              marketMode="cross"
+              onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Binance Perp vs Bybit Perp", opportunity))}
+              initialCollapsed
+            />
+          </div>
+          <div id="perp-binance-gateio" className="scroll-mt-28">
+            <OpportunitySection
+              title="Binance Perp vs Gate.io Perp"
+              description="바이낸스와 Gate.io 무기한 선물 가격 차이를 비교합니다. 보조 거래소 선선갭을 넓게 보는 용도입니다."
+              opportunities={topPerpPerpGateIo}
+              loading={loading}
+              marketMode="cross"
+              onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Binance Perp vs Gate.io Perp", opportunity))}
+              initialCollapsed
+            />
+          </div>
+          <div id="perp-okx-bybit" className="scroll-mt-28">
+            <OpportunitySection
+              title="OKX Swap vs Bybit Perp"
+              description="OKX와 Bybit 무기한 선물 가격 차이를 비교합니다. 바이낸스 축 외에 주요 해외 선물 거래소끼리의 괴리를 확인합니다."
+              opportunities={topOkxBybitPerp}
+              loading={loading}
+              marketMode="cross"
+              onSelectChart={(opportunity) => setSelectedChart(getChartSelection("OKX Swap vs Bybit Perp", opportunity))}
+              initialCollapsed
+            />
+          </div>
+          <div id="perp-okx-gateio" className="scroll-mt-28">
+            <OpportunitySection
+              title="OKX Swap vs Gate.io Perp"
+              description="OKX와 Gate.io 무기한 선물 가격 차이를 비교합니다. 거래소 간 선선갭을 더 촘촘하게 확인하는 보조 섹션입니다."
+              opportunities={topOkxGateIoPerp}
+              loading={loading}
+              marketMode="cross"
+              onSelectChart={(opportunity) => setSelectedChart(getChartSelection("OKX Swap vs Gate.io Perp", opportunity))}
+              initialCollapsed
+            />
+          </div>
+          <div id="perp-bybit-gateio" className="scroll-mt-28">
+            <OpportunitySection
+              title="Bybit Perp vs Gate.io Perp"
+              description="Bybit와 Gate.io 무기한 선물 가격 차이를 비교합니다. 바이낸스를 제외한 선물 거래소 간 갭까지 한 번에 스캔할 수 있습니다."
+              opportunities={topBybitGateIoPerp}
+              loading={loading}
+              marketMode="cross"
+              onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Bybit Perp vs Gate.io Perp", opportunity))}
+              initialCollapsed
+            />
+          </div>
         </CategorySection>
 
         <CategorySection
