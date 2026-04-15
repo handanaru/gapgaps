@@ -320,17 +320,19 @@ function getOpportunityBoardMode(sourceTitle: string): "internal" | "krw-cross" 
 
 function getTradingViewSymbol(exchangeLabel: string, symbol: string) {
   const normalized = symbol.replace("/KRW", "");
+  const base = normalized.replace("USDT", "").replace("KRW", "");
+  const usdtSymbol = `${base}USDT`;
 
-  if (exchangeLabel === "Binance Spot") return `BINANCE:${normalized}`;
-  if (exchangeLabel === "Binance Futures" || exchangeLabel === "Binance Perp") return `BINANCE:${normalized}.P`;
-  if (exchangeLabel === "OKX Spot") return `OKX:${normalized}`;
-  if (exchangeLabel === "OKX Perp" || exchangeLabel === "OKX Swap") return `OKX:${normalized}.P`;
-  if (exchangeLabel === "Bybit Spot") return `BYBIT:${normalized}`;
-  if (exchangeLabel === "Bybit Perp") return `BYBIT:${normalized}.P`;
-  if (exchangeLabel === "Gate.io Spot") return `GATEIO:${normalized}`;
-  if (exchangeLabel === "Gate.io Perp") return `GATEIO:${normalized}.P`;
-  if (exchangeLabel === "Bithumb Spot") return `BITHUMB:${normalized.replace("USDT", "").replace("KRW", "")}KRW`;
-  if (exchangeLabel === "Upbit Spot") return `UPBIT:${normalized.replace("USDT", "").replace("KRW", "")}KRW`;
+  if (exchangeLabel === "Binance Spot") return `BINANCE:${usdtSymbol}`;
+  if (exchangeLabel === "Binance Futures" || exchangeLabel === "Binance Perp") return `BINANCE:${usdtSymbol}.P`;
+  if (exchangeLabel === "OKX Spot") return `OKX:${usdtSymbol}`;
+  if (exchangeLabel === "OKX Perp" || exchangeLabel === "OKX Swap") return `OKX:${usdtSymbol}.P`;
+  if (exchangeLabel === "Bybit Spot") return `BYBIT:${usdtSymbol}`;
+  if (exchangeLabel === "Bybit Perp") return `BYBIT:${usdtSymbol}.P`;
+  if (exchangeLabel === "Gate.io Spot") return `GATEIO:${usdtSymbol}`;
+  if (exchangeLabel === "Gate.io Perp") return `GATEIO:${usdtSymbol}.P`;
+  if (exchangeLabel === "Bithumb Spot") return `BITHUMB:${base}KRW`;
+  if (exchangeLabel === "Upbit Spot") return `UPBIT:${base}KRW`;
 
   return null;
 }
