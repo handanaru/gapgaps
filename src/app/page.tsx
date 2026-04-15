@@ -2549,7 +2549,7 @@ export default function Home() {
           <div className="mb-5 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
             <div className="border-b border-white/10 px-4 py-3">
               <div className="text-sm font-semibold text-white">DEX 실행 가능성 점검</div>
-              <div className="mt-1 text-xs text-slate-400">가격 비교 전에 빗썸과 Solana 네트워크가 실제로 맞는 토큰만 먼저 추립니다.</div>
+              <div className="mt-1 text-xs text-slate-400">가격 비교 전에 빗썸과 Solana 네트워크가 실제로 맞는 토큰만 먼저 추립니다. 아래에는 실제 가격차 표도 바로 펼쳐집니다.</div>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-xs text-slate-300">
