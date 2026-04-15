@@ -144,6 +144,10 @@ type OpportunityPreviewConfig = {
   detailTitle: string;
 };
 
+type OpportunityDetailSelection = {
+  row: AggregatedOpportunityRow;
+};
+
 const DEFAULT_BINANCE_TAKER_FEE = 0.05;
 const DEFAULT_BITHUMB_TAKER_FEE = 0.04;
 const DEFAULT_OKX_TAKER_FEE = 0.05;
@@ -583,6 +587,18 @@ function getChartSelection(title: string, opportunity: ArbitrageOpportunity): Ch
   };
 }
 
+function findOpportunityRow(rows: AggregatedOpportunityRow[], sourceTitle: string, opportunity: ArbitrageOpportunity) {
+  return (
+    rows.find(
+      (row) =>
+        row.sourceTitle === sourceTitle &&
+        row.opportunity.symbol === opportunity.symbol &&
+        row.opportunity.buyExchange === opportunity.buyExchange &&
+        row.opportunity.sellExchange === opportunity.sellExchange
+    ) ?? null
+  );
+}
+
 function isTransferReadyForOpportunity(
   opportunity: ArbitrageOpportunity,
   leftStatuses: TransferStatusMap,
@@ -671,6 +687,7 @@ export default function Home() {
   const [workflowUpdatedAt, setWorkflowUpdatedAt] = useState<number | null>(null);
   const [workflowLog, setWorkflowLog] = useState<WorkflowLogEntry[]>([]);
   const [selectedChart, setSelectedChart] = useState<ChartSelection | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<OpportunityDetailSelection | null>(null);
   const [settingsCollapsed, setSettingsCollapsed] = useState(true);
   const [alertsCollapsed, setAlertsCollapsed] = useState(true);
   const [workflowCollapsed, setWorkflowCollapsed] = useState(false);
@@ -1750,6 +1767,10 @@ export default function Home() {
                 config={config}
                 onOpenDetail={(opportunity) => {
                   setSelectedChart(getChartSelection(config.detailTitle, opportunity));
+                  const row = findOpportunityRow(aggregatedOpportunityRows, config.detailTitle, opportunity);
+                  if (row) {
+                    setSelectedDetail({ row });
+                  }
                   document.getElementById(config.detailAnchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
               />
@@ -1971,7 +1992,14 @@ export default function Home() {
                     };
 
                     return (
-                      <tr key={row.id} className="hover:bg-white/5">
+                      <tr
+                        key={row.id}
+                        className="cursor-pointer hover:bg-white/5"
+                        onClick={() => {
+                          setSelectedChart(getChartSelection(row.sourceTitle, row.opportunity));
+                          setSelectedDetail({ row });
+                        }}
+                      >
                         <td className="px-4 py-3">
                           <div className="text-sm font-medium text-white">{row.sourceTitle}</div>
                           <div className="mt-1 text-xs text-slate-500">{getOpportunityKindLabel(row.kind)}</div>
@@ -2037,6 +2065,7 @@ export default function Home() {
         </section>
 
         <OpportunityChartPanel selection={selectedChart} onClear={() => setSelectedChart(null)} />
+        <OpportunityDetailModal selection={selectedDetail} onClose={() => setSelectedDetail(null)} />
 
         <WithdrawalWorkflowSection
           candidate={workflowCandidate}
@@ -2984,6 +3013,69 @@ function SummaryCard({ label, value, hint }: { label: string; value: string; hin
       <p className="text-sm text-slate-400">{label}</p>
       <div className="mt-3 text-2xl font-semibold tracking-tight text-white">{value}</div>
       <p className="mt-2 text-xs text-slate-500">{hint}</p>
+    </div>
+  );
+}
+
+function OpportunityDetailModal({ selection, onClose }: { selection: OpportunityDetailSelection | null; onClose: () => void }) {
+  if (!selection) return null;
+
+  const { row } = selection;
+  const transferSymbol = row.opportunity.symbol.replace("/KRW", "");
+  const leftStatus = row.transferStatusConfig?.leftStatuses[transferSymbol];
+  const rightStatus = row.transferStatusConfig?.rightStatuses?.[transferSymbol];
+  const executionStatus = row.transferStatusConfig
+    ? getExecutionStatus(row.opportunity, leftStatus, rightStatus)
+    : { label: "참고용", tone: "border-white/10 bg-slate-900/80 text-slate-400" };
+  const matchedNetworks = leftStatus && rightStatus ? getMatchedNetworks(leftStatus, rightStatus) : [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-3 backdrop-blur sm:items-center sm:p-6" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[28px] border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-black/50" onClick={(event) => event.stopPropagation()}>
+        <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">상세 보기</p>
+            <h2 className="mt-2 text-xl font-semibold text-white">{row.opportunity.symbol}</h2>
+            <p className="mt-1 text-sm text-slate-400">{row.sourceTitle} · {row.routeLabel}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800">닫기</button>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="text-xs text-slate-500">매수</div>
+            <div className="mt-1 text-sm font-semibold text-white">{row.opportunity.buyExchange}</div>
+            <div className="mt-2 font-mono text-sm text-slate-200">{formatPrice(row.opportunity.buyPrice)}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="text-xs text-slate-500">매도</div>
+            <div className="mt-1 text-sm font-semibold text-white">{row.opportunity.sellExchange}</div>
+            <div className="mt-2 font-mono text-sm text-slate-200">{formatPrice(row.opportunity.sellPrice)}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="text-xs text-slate-500">상태</div>
+            <div className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-medium ${executionStatus.tone}`}>{executionStatus.label}</div>
+            <div className="mt-3 text-xs text-slate-400">실행 Gap {formatPct(row.opportunity.gapPct)} · 예상 순수익 {formatPct(row.opportunity.estimatedNetPct)}</div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <NetworkStatusCard label={row.transferStatusConfig?.leftExchangeLabel ?? row.opportunity.buyExchange} status={leftStatus} />
+          <NetworkStatusCard label={row.transferStatusConfig?.rightExchangeLabel ?? row.opportunity.sellExchange} status={rightStatus} />
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="text-sm font-medium text-white">공통 네트워크</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {matchedNetworks.length ? matchedNetworks.map((network) => (
+              <span key={network.networkKey} className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">{network.networkLabel}</span>
+            )) : <span className="text-sm text-slate-500">공통 실행 가능 네트워크를 찾지 못했습니다.</span>}
+          </div>
+          {row.transferStatusConfig?.leftNotice || row.transferStatusConfig?.rightNotice ? (
+            <div className="mt-3 text-xs text-amber-200/90">주의: {[row.transferStatusConfig?.leftNotice, row.transferStatusConfig?.rightNotice].filter(Boolean).join(' / ')}</div>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
