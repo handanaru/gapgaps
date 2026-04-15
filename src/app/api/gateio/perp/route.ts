@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeGateIoPerpTickers } from "@/lib/exchanges";
+import { createBlockedExchangeResponse } from "@/lib/api-guard";
 
 const GATEIO_PERP_URL = "https://api.gateio.ws/api/v4/futures/usdt/tickers";
 
@@ -31,6 +32,6 @@ export async function GET() {
       fetchedAt: Date.now(),
     });
   } catch (error) {
-    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    return createBlockedExchangeResponse("Gate.io", "perp", error instanceof Error ? error.message : "Unknown error");
   }
 }

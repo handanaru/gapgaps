@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeGateIoSpotTickers } from "@/lib/exchanges";
+import { createBlockedExchangeResponse } from "@/lib/api-guard";
 
 const GATEIO_SPOT_URL = "https://api.gateio.ws/api/v4/spot/tickers";
 
@@ -31,6 +32,6 @@ export async function GET() {
       fetchedAt: Date.now(),
     });
   } catch (error) {
-    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    return createBlockedExchangeResponse("Gate.io", "spot", error instanceof Error ? error.message : "Unknown error");
   }
 }

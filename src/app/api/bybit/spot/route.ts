@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeBybitSpotTickers } from "@/lib/exchanges";
+import { createBlockedExchangeResponse } from "@/lib/api-guard";
 
 const BYBIT_SPOT_URL = "https://api.bybit.com/v5/market/tickers?category=spot";
 
@@ -36,6 +37,6 @@ export async function GET() {
       fetchedAt: Date.now(),
     });
   } catch (error) {
-    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    return createBlockedExchangeResponse("Bybit", "spot", error instanceof Error ? error.message : "Unknown error");
   }
 }
