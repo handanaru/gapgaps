@@ -1791,8 +1791,8 @@ export default function Home() {
         <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
           <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-white">Fee &amp; Filter Settings</h2>
-              <p className="mt-1 text-sm text-slate-400">거래소별 taker 수수료와 최소 거래대금 필터를 조정하면 기회 목록이 즉시 다시 계산됩니다.</p>
+              <h2 className="text-lg font-semibold text-white">운영 도구 · 수수료 / 필터</h2>
+              <p className="mt-1 text-sm text-slate-400">필요할 때만 펼쳐서 수수료와 거래대금 필터를 조정합니다.</p>
             </div>
             <div className="flex items-center gap-2">
               <button
