@@ -1532,9 +1532,25 @@ export default function Home() {
   const quickScanRows = useMemo(() => {
     return aggregatedOpportunityRows
       .filter((row) => row.opportunity.estimatedNetPct >= 2)
+      .filter((row) => {
+        const symbol = row.opportunity.symbol.replace("/KRW", "");
+        const leftStatus = row.transferStatusConfig?.leftStatuses[symbol];
+        const rightStatus = row.transferStatusConfig?.rightStatuses?.[symbol];
+
+        if (!row.transferStatusConfig) {
+          return row.kind === "basis" || row.kind === "perp-perp";
+        }
+
+        if (row.sourceTitle === "Upbit KRW vs Bithumb KRW") {
+          return isTransferReadyForOpportunity(row.opportunity, bithumbTransferStatus);
+        }
+
+        return isTransferReadyForOpportunity(row.opportunity, row.transferStatusConfig.leftStatuses, row.transferStatusConfig.rightStatuses) &&
+          getExecutionStatus(row.opportunity, leftStatus, rightStatus).label === "실행 가능";
+      })
       .sort((left, right) => right.opportunity.estimatedNetPct - left.opportunity.estimatedNetPct)
       .slice(0, 12);
-  }, [aggregatedOpportunityRows]);
+  }, [aggregatedOpportunityRows, bithumbTransferStatus]);
 
   const filteredOpportunityRows = useMemo(() => {
     return aggregatedOpportunityRows.filter((row) => {
