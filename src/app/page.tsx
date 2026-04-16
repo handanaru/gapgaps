@@ -1219,7 +1219,9 @@ export default function Home() {
     const executableBithumbGateIo = topBithumbGateIo
       .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, gateIoTransferStatus))
       .slice(0, 2);
-    const upbitBithumbPreview = topUpbitBithumb.slice(0, 2);
+    const executableUpbitBithumb = topUpbitBithumb
+      .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus))
+      .slice(0, 2);
 
     return [
       {
@@ -1258,11 +1260,11 @@ export default function Home() {
       {
         id: "domestic",
         title: "Upbit vs Bithumb",
-        description: "국내 원화 거래소끼리 직접 차액을 빠르게 보는 보드",
-        opportunities: upbitBithumbPreview,
+        description: "입출금 가능성이 있는 국내 원화 차액만 먼저 보는 보드",
+        opportunities: executableUpbitBithumb,
         accentClassName: "from-violet-300/20 to-transparent",
-        badgeLabel: upbitBithumbPreview.length > 0 ? `후보 ${topUpbitBithumb.length}` : "후보 없음",
-        badgeTone: "slate",
+        badgeLabel: executableUpbitBithumb.length > 0 ? `후보 ${executableUpbitBithumb.length}` : "후보 없음",
+        badgeTone: executableUpbitBithumb.length > 0 ? "emerald" : "amber",
         detailAnchor: "upbit-bithumb",
         detailTitle: "Upbit KRW vs Bithumb KRW",
       },
