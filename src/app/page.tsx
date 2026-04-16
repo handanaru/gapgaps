@@ -118,12 +118,18 @@ type ChartLeg = {
   tradingViewSymbol: string | null;
 };
 type ChartSelection = {
+  key: string;
   title: string;
   symbol: string;
   routeLabel: string;
   gapPct: number;
   estimatedNetPct: number;
   legs: [ChartLeg, ChartLeg];
+};
+type SpreadHistoryPoint = {
+  timestamp: number;
+  gapPct: number;
+  estimatedNetPct: number;
 };
 type NavigationSection = {
   id: string;
@@ -582,6 +588,7 @@ function getWorkflowCandidate(opportunity: ArbitrageOpportunity, routeLabel: str
 
 function getChartSelection(title: string, opportunity: ArbitrageOpportunity): ChartSelection {
   return {
+    key: `${title}:${opportunity.symbol}:${opportunity.buyExchange}:${opportunity.sellExchange}`,
     title,
     symbol: opportunity.symbol,
     routeLabel: getOpportunityRouteLabel(title),
@@ -690,6 +697,7 @@ export default function Home() {
   const [workflowUpdatedAt, setWorkflowUpdatedAt] = useState<number | null>(null);
   const [workflowLog, setWorkflowLog] = useState<WorkflowLogEntry[]>([]);
   const [selectedChart, setSelectedChart] = useState<ChartSelection | null>(null);
+  const [spreadHistoryByKey, setSpreadHistoryByKey] = useState<Record<string, SpreadHistoryPoint[]>>({});
   const [settingsCollapsed, setSettingsCollapsed] = useState(true);
   const [alertsCollapsed, setAlertsCollapsed] = useState(true);
   const [workflowCollapsed, setWorkflowCollapsed] = useState(true);
@@ -1736,6 +1744,28 @@ export default function Home() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    if (!selectedChart || !lastUpdated) return;
+
+    setSpreadHistoryByKey((current) => {
+      const existing = current[selectedChart.key] ?? [];
+      const nextPoint = {
+        timestamp: lastUpdated,
+        gapPct: selectedChart.gapPct,
+        estimatedNetPct: selectedChart.estimatedNetPct,
+      } satisfies SpreadHistoryPoint;
+
+      if (existing[existing.length - 1]?.timestamp === nextPoint.timestamp) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [selectedChart.key]: [...existing, nextPoint].slice(-120),
+      };
+    });
+  }, [lastUpdated, selectedChart]);
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
       <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-6">
@@ -1927,7 +1957,11 @@ export default function Home() {
           </div>
         </section>
 
-        <OpportunityChartPanel selection={selectedChart} onClear={() => setSelectedChart(null)} />
+        <OpportunityChartPanel
+          selection={selectedChart}
+          history={selectedChart ? spreadHistoryByKey[selectedChart.key] ?? [] : []}
+          onClear={() => setSelectedChart(null)}
+        />
 
         <WithdrawalWorkflowSection
           candidate={workflowCandidate}
@@ -2130,7 +2164,11 @@ export default function Home() {
             />
           )}
         </section>
-        <OpportunityChartPanel selection={selectedChart} onClear={() => setSelectedChart(null)} />
+        <OpportunityChartPanel
+          selection={selectedChart}
+          history={selectedChart ? spreadHistoryByKey[selectedChart.key] ?? [] : []}
+          onClear={() => setSelectedChart(null)}
+        />
 
         <WithdrawalWorkflowSection
           candidate={workflowCandidate}
@@ -3317,14 +3355,30 @@ function SummaryCard({ label, value, hint }: { label: string; value: string; hin
   );
 }
 
-function OpportunityChartPanel({ selection, onClear }: { selection: ChartSelection | null; onClear: () => void }) {
+function OpportunityChartPanel({ selection, history, onClear }: { selection: ChartSelection | null; history: SpreadHistoryPoint[]; onClear: () => void }) {
+  const chartWidth = 960;
+  const chartHeight = 260;
+  const padding = 24;
+  const points = history.length > 1 ? history : selection ? [{ timestamp: Date.now(), gapPct: selection.gapPct, estimatedNetPct: selection.estimatedNetPct }] : [];
+  const values = points.flatMap((point) => [point.gapPct, point.estimatedNetPct]);
+  const minValue = values.length ? Math.min(...values) : -1;
+  const maxValue = values.length ? Math.max(...values) : 1;
+  const range = maxValue - minValue || 1;
+  const toX = (index: number) => padding + (index / Math.max(points.length - 1, 1)) * (chartWidth - padding * 2);
+  const toY = (value: number) => chartHeight - padding - ((value - minValue) / range) * (chartHeight - padding * 2);
+  const buildPath = (selector: (point: SpreadHistoryPoint) => number) =>
+    points.map((point, index) => `${index === 0 ? "M" : "L"}${toX(index)},${toY(selector(point))}`).join(" ");
+  const gapPath = buildPath((point) => point.gapPct);
+  const netPath = buildPath((point) => point.estimatedNetPct);
+  const latestPoint = points[points.length - 1] ?? null;
+
   return (
     <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Chart View</p>
-          <h2 className="mt-2 text-lg font-semibold text-white">선선갭 / 현선갭 차트</h2>
-          <p className="mt-1 text-sm text-slate-400">현선갭이나 선선갭 표에서 행을 클릭하면 매수/매도 레그 차트를 여기서 바로 비교할 수 있습니다.</p>
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Spread View</p>
+          <h2 className="mt-2 text-lg font-semibold text-white">가격 갭 추이</h2>
+          <p className="mt-1 text-sm text-slate-400">선택한 후보의 실행 Gap과 예상 순수익이 시간에 따라 어떻게 벌어지는지 먼저 보여줍니다.</p>
         </div>
         {selection ? (
           <button
@@ -3339,7 +3393,7 @@ function OpportunityChartPanel({ selection, onClear }: { selection: ChartSelecti
 
       {!selection ? (
         <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-8 text-sm text-slate-500">
-          차트를 보려면 `현물과 선물 갭` 또는 `선물과 선물 갭` 표에서 원하는 행을 클릭하세요.
+          차트를 보려면 표에서 원하는 행을 클릭하세요.
         </div>
       ) : (
         <div className="mt-4 space-y-4">
@@ -3360,6 +3414,35 @@ function OpportunityChartPanel({ selection, onClear }: { selection: ChartSelecti
             </div>
           </div>
 
+          <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-white">스프레드 차트</div>
+                <div className="mt-1 text-xs text-slate-400">초록선 = 실행 Gap, 파란선 = 예상 순수익</div>
+              </div>
+              <div className="text-xs text-slate-500">히스토리 {points.length}개</div>
+            </div>
+            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-[260px] w-full rounded-2xl border border-white/10 bg-slate-950/70">
+              <line x1={padding} y1={chartHeight / 2} x2={chartWidth - padding} y2={chartHeight / 2} stroke="rgba(148,163,184,0.25)" strokeDasharray="4 4" />
+              <path d={gapPath} fill="none" stroke="rgb(52 211 153)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+              <path d={netPath} fill="none" stroke="rgb(34 211 238)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                <div className="text-[11px] text-slate-500">현재 실행 Gap</div>
+                <div className="mt-1 font-mono text-sm text-emerald-300">{latestPoint ? formatPct(latestPoint.gapPct) : "-"}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                <div className="text-[11px] text-slate-500">현재 예상 순수익</div>
+                <div className="mt-1 font-mono text-sm text-cyan-300">{latestPoint ? formatPct(latestPoint.estimatedNetPct) : "-"}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                <div className="text-[11px] text-slate-500">추적 구간</div>
+                <div className="mt-1 font-mono text-sm text-slate-200">최근 {points.length}틱</div>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-4 xl:grid-cols-2">
             {selection.legs.map((leg) => (
               <div key={`${selection.symbol}-${leg.label}-${leg.exchange}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
@@ -3375,7 +3458,7 @@ function OpportunityChartPanel({ selection, onClear }: { selection: ChartSelecti
                       rel="noreferrer"
                       className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs text-slate-300 hover:bg-slate-800"
                     >
-                      TradingView에서 열기
+                      개별 차트 열기
                     </a>
                   ) : null}
                 </div>
@@ -3384,7 +3467,7 @@ function OpportunityChartPanel({ selection, onClear }: { selection: ChartSelecti
                     key={leg.tradingViewSymbol}
                     src={getTradingViewEmbedUrl(leg.tradingViewSymbol)}
                     title={`${selection.symbol}-${leg.exchange}-chart`}
-                    className="h-[420px] w-full rounded-2xl border border-white/10 bg-slate-950"
+                    className="h-[320px] w-full rounded-2xl border border-white/10 bg-slate-950"
                   />
                 ) : (
                   <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-10 text-sm text-slate-500">
