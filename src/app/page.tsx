@@ -1781,19 +1781,10 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-amber-300/20 bg-amber-400/10 p-5 text-sm text-amber-50">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="font-semibold text-amber-100">KRW 비교 기준</h2>
-              <p className="mt-1 text-amber-50/90">
-                KRW 거래소와 해외 spot 비교는 항상 KRW 기준으로 계산합니다. 해외 가격은 `USDT/KRW` 환율을 적용한 값이며, 표에는 `KRW 환산값 (해외 원가)`
-                형식으로 함께 표시됩니다.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-amber-200/20 bg-slate-950/30 px-4 py-3 text-xs text-amber-100">
-              <div>현재 환산 기준</div>
-              <div className="mt-1 text-base font-semibold">{usdtKrwRate ? `1 USDT = ${formatPrice(usdtKrwRate)} KRW` : "환율 로딩 중"}</div>
-            </div>
+        <section className="rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-50">
+          <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
+            <div className="font-medium text-amber-100">해외 spot은 USDT/KRW 환산 기준으로 KRW 비교</div>
+            <div className="text-xs text-amber-100/90">{usdtKrwRate ? `1 USDT = ${formatPrice(usdtKrwRate)} KRW` : "환율 로딩 중"}</div>
           </div>
         </section>
 
