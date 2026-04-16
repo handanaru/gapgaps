@@ -1930,6 +1930,40 @@ export default function Home() {
           </div>
         </section>
 
+        <OpportunityChartPanel selection={selectedChart} onClear={() => setSelectedChart(null)} />
+
+        <WithdrawalWorkflowSection
+          candidate={workflowCandidate}
+          networkState={workflowNetworkState}
+          logEntries={workflowLog}
+          mode={workflowMode}
+          step={workflowStep}
+          quantity={workflowQuantity}
+          lastUpdated={workflowUpdatedAt}
+          collapsed={workflowCollapsed}
+          onToggleCollapsed={() => setWorkflowCollapsed((prev) => !prev)}
+          onQuantityChange={setWorkflowQuantity}
+          onApproveQuantity={() => {
+            setWorkflowStep("quantity-approved");
+            setWorkflowUpdatedAt(Date.now());
+          }}
+          onApproveAuth={() => {
+            setWorkflowStep("auth-approved");
+            setWorkflowUpdatedAt(Date.now());
+          }}
+          onExecute={() => {
+            setWorkflowStep("executed");
+            setWorkflowUpdatedAt(Date.now());
+          }}
+          onReset={() => {
+            setWorkflowMode("auto");
+            setWorkflowStep(workflowTopCandidate ? "detected" : "idle");
+            setWorkflowCandidate(workflowTopCandidate);
+            setWorkflowQuantity("");
+            setWorkflowUpdatedAt(Date.now());
+          }}
+        />
+
         <section className="rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-2xl shadow-slate-950/40">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -2107,40 +2141,6 @@ export default function Home() {
             </table>
           </div>
         </section>
-
-        <OpportunityChartPanel selection={selectedChart} onClear={() => setSelectedChart(null)} />
-
-        <WithdrawalWorkflowSection
-          candidate={workflowCandidate}
-          networkState={workflowNetworkState}
-          logEntries={workflowLog}
-          mode={workflowMode}
-          step={workflowStep}
-          quantity={workflowQuantity}
-          lastUpdated={workflowUpdatedAt}
-          collapsed={workflowCollapsed}
-          onToggleCollapsed={() => setWorkflowCollapsed((prev) => !prev)}
-          onQuantityChange={setWorkflowQuantity}
-          onApproveQuantity={() => {
-            setWorkflowStep("quantity-approved");
-            setWorkflowUpdatedAt(Date.now());
-          }}
-          onApproveAuth={() => {
-            setWorkflowStep("auth-approved");
-            setWorkflowUpdatedAt(Date.now());
-          }}
-          onExecute={() => {
-            setWorkflowStep("executed");
-            setWorkflowUpdatedAt(Date.now());
-          }}
-          onReset={() => {
-            setWorkflowMode("auto");
-            setWorkflowStep(workflowTopCandidate ? "detected" : "idle");
-            setWorkflowCandidate(workflowTopCandidate);
-            setWorkflowQuantity("");
-            setWorkflowUpdatedAt(Date.now());
-          }}
-        />
 
         <CategorySection
           id="basis"
