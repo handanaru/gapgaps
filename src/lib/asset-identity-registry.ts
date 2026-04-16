@@ -20,10 +20,10 @@ const EXCHANGE_ASSET_ID_OVERRIDES: Record<string, ExchangeAssetMap> = {
 
 const BLOCKED_CROSS_EXCHANGE_PAIRS: Record<string, Set<string>> = {
   "Bithumb|Gate.io": new Set([
-    "A","ADA","AERGO","ANC","ATD","BEAM","BFC","BLACK","BTR","CHZ","COS","DON","DOT","EGG","EOSDAC","ES","FITFI","GAS","GTC","HEMI","HIGH","HVH","IOTA","IRYS","JOE","KSM","LWA","MBL","MEETONE","NEO","NSBT","NXPC","ONG","ONT","ONX","OP","PEPPER","PROMPT","PUMPBTC","QI"
+    "A","ADA","AERGO","ANC","ATD","BEAM","BFC","BLACK","BTR","CHZ","COS","DON","DOT","EGG","EOSDAC","ES","FITFI","GAS","GTC","HEMI","HIGH","HVH","IOTA","IRYS","JOE","KSM","LWA","MBL","MEETONE","NEO","NSBT","NXPC","ONG","ONT","ONX","OP","PEPPER","PROMPT","PUMPBTC","QI","SGB","SIX","SNS","SOLO","SPACE","SPURS","SRT","STABLE","STRK","TALK","THE","WCT","WIKEN","ZBT","ZK","ZRC"
   ]),
   "Bithumb|Binance": new Set([
-    "A","ADA","AERGO","ALLO","ANC","AR","ATD","ATH","BEAM","BOBA","CBK","CHZ","COS","DON","DOOD","ELF","FLR","G","GAS","HOOK","JOE","KAT","KLY","KSM","LIT","MANTA","MEETONE","MERL","MNT","MTL","NEO","NSBT","NXPC","ONX","PURSE","QI","QKC","REI","RON","S"
+    "A","ADA","AERGO","ALLO","ANC","AR","ATD","ATH","BEAM","BOBA","CBK","CHZ","COS","DON","DOOD","ELF","FLR","G","GAS","HOOK","JOE","KAT","KLY","KSM","LIT","MANTA","MEETONE","MERL","MNT","MTL","NEO","NSBT","NXPC","ONX","PURSE","QI","QKC","REI","RON","S","SCR","SGB","SNS","SNT","SOLO","WAVES","WAXP","XPL","XPR","ZK","ZRC"
   ]),
   "OKX|Gate.io": new Set(["EDGE"]),
 };
