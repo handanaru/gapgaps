@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { hasVerifiedAssetIdentity } from "@/lib/asset-identity";
 import { getDexExecutionStatus } from "@/lib/dex-execution";
 import { getDexTokenBySymbol } from "@/lib/dex-tokens";
 import { calculateArbitrage, calculateCrossExchangeArbitrage } from "@/lib/exchanges";
@@ -611,15 +612,23 @@ function isTransferReadyForOpportunity(
   const leftStatus = leftStatuses[symbol];
   const rightStatus = rightStatuses?.[symbol];
 
+  if (!leftStatus || !rightStatus) {
+    return false;
+  }
+
   if (hasContractMismatch(leftStatus, rightStatus)) {
     return false;
   }
 
-  if (isDomesticKrwLeg(opportunity.buyExchange)) {
-    return leftStatus?.withdrawEnabled === true && rightStatus?.depositEnabled === true;
+  if (!hasVerifiedAssetIdentity(leftStatus, rightStatus)) {
+    return false;
   }
 
-  return rightStatus?.withdrawEnabled === true && leftStatus?.depositEnabled === true;
+  if (isDomesticKrwLeg(opportunity.buyExchange)) {
+    return leftStatus.withdrawEnabled === true && rightStatus.depositEnabled === true;
+  }
+
+  return rightStatus.withdrawEnabled === true && leftStatus.depositEnabled === true;
 }
 
 function getExecutionStatus(
@@ -1532,21 +1541,24 @@ export default function Home() {
   const quickScanRows = useMemo(() => {
     return aggregatedOpportunityRows
       .filter((row) => row.opportunity.estimatedNetPct >= 2)
+      .filter((row) => row.kind === "cex-cex" || row.kind === "cex-dex")
       .filter((row) => {
         const symbol = row.opportunity.symbol.replace("/KRW", "");
         const leftStatus = row.transferStatusConfig?.leftStatuses[symbol];
         const rightStatus = row.transferStatusConfig?.rightStatuses?.[symbol];
 
         if (!row.transferStatusConfig) {
-          return row.kind === "basis" || row.kind === "perp-perp";
+          return false;
         }
 
         if (row.sourceTitle === "Upbit KRW vs Bithumb KRW") {
           return isTransferReadyForOpportunity(row.opportunity, bithumbTransferStatus);
         }
 
-        return isTransferReadyForOpportunity(row.opportunity, row.transferStatusConfig.leftStatuses, row.transferStatusConfig.rightStatuses) &&
-          getExecutionStatus(row.opportunity, leftStatus, rightStatus).label === "실행 가능";
+        return (
+          isTransferReadyForOpportunity(row.opportunity, row.transferStatusConfig.leftStatuses, row.transferStatusConfig.rightStatuses) &&
+          getExecutionStatus(row.opportunity, leftStatus, rightStatus).label === "실행 가능"
+        );
       })
       .sort((left, right) => right.opportunity.estimatedNetPct - left.opportunity.estimatedNetPct)
       .slice(0, 12);
