@@ -696,6 +696,7 @@ export default function Home() {
   const [filteredViewCollapsed, setFilteredViewCollapsed] = useState(true);
   const [matrixCollapsed, setMatrixCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
+  const [showScrollTopButton, setShowScrollTopButton] = useState(false);
   const [opportunityFilterKind, setOpportunityFilterKind] = useState<OpportunityFilterKind>("all");
   const [opportunityExecutableOnly, setOpportunityExecutableOnly] = useState(true);
   const workflowLogSignatureRef = useRef<string | null>(null);
@@ -1721,6 +1722,16 @@ export default function Home() {
     return () => {
       observers.forEach((observer) => observer?.disconnect());
     };
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => {
+      setShowScrollTopButton(window.scrollY > 640);
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
@@ -2922,6 +2933,16 @@ export default function Home() {
             />
           )}
         </section>
+
+        {showScrollTopButton ? (
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="fixed bottom-5 right-5 z-40 rounded-full border border-cyan-300/20 bg-slate-950/90 px-4 py-3 text-sm font-medium text-cyan-100 shadow-2xl shadow-black/30 backdrop-blur transition hover:bg-cyan-400/15"
+          >
+            ↑ 위로 가기
+          </button>
+        ) : null}
           </div>
         </div>
       </div>
