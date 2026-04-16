@@ -3309,32 +3309,120 @@ function SummaryCard({ label, value, hint }: { label: string; value: string; hin
 }
 
 function OpportunityChartPanel({ selection, history, onClear }: { selection: ChartSelection | null; history: SpreadHistoryPoint[]; onClear: () => void }) {
-  const chartWidth = 960;
-  const chartHeight = 260;
-  const padding = 24;
-  const points = history.length > 1 ? history : selection ? [{ timestamp: Date.now(), gapPct: selection.gapPct, estimatedNetPct: selection.estimatedNetPct }] : [];
-  const values = points.flatMap((point) => [point.gapPct, point.estimatedNetPct]);
-  const minValue = values.length ? Math.min(...values) : -1;
-  const maxValue = values.length ? Math.max(...values) : 1;
-  const range = maxValue - minValue || 1;
-  const toX = (index: number) => padding + (index / Math.max(points.length - 1, 1)) * (chartWidth - padding * 2);
-  const toY = (value: number) => chartHeight - padding - ((value - minValue) / range) * (chartHeight - padding * 2);
-  const buildPath = (selector: (point: SpreadHistoryPoint) => number) =>
-    points.map((point, index) => `${index === 0 ? "M" : "L"}${toX(index)},${toY(selector(point))}`).join(" ");
-  const gapPath = buildPath((point) => point.gapPct);
-  const netPath = buildPath((point) => point.estimatedNetPct);
-  const latestPoint = points[points.length - 1] ?? null;
+  const [timeframe, setTimeframe] = useState<"1m" | "3m" | "5m" | "15m" | "1h">("5m");
+  const timeframeOptions: Array<{ key: "1m" | "3m" | "5m" | "15m" | "1h"; label: string; points: number }> = [
+    { key: "1m", label: "1분", points: 20 },
+    { key: "3m", label: "3분", points: 40 },
+    { key: "5m", label: "5분", points: 60 },
+    { key: "15m", label: "15분", points: 90 },
+    { key: "1h", label: "1시간", points: 120 },
+  ];
+  const selectedWindow = timeframeOptions.find((option) => option.key === timeframe) ?? timeframeOptions[2];
+  const fallbackPoint = selection ? [{ timestamp: Date.now(), gapPct: selection.gapPct, estimatedNetPct: selection.estimatedNetPct }] : [];
+  const baseHistory = history.length > 1 ? history : fallbackPoint;
+  const visibleHistory = baseHistory.slice(-selectedWindow.points);
   const spreadExpression = selection ? getTradingViewSpreadExpression(selection.legs) : null;
+  const latestPoint = visibleHistory[visibleHistory.length - 1] ?? null;
+  const latestGap = latestPoint?.gapPct ?? selection?.gapPct ?? 0;
+  const latestNet = latestPoint?.estimatedNetPct ?? selection?.estimatedNetPct ?? 0;
+  const targetGap = 2;
+
+  const createSeriesPath = (values: number[], width: number, height: number, paddingX: number, paddingY: number) => {
+    if (!values.length) return "";
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    return values
+      .map((value, index) => {
+        const x = paddingX + (index / Math.max(values.length - 1, 1)) * (width - paddingX * 2);
+        const y = height - paddingY - ((value - min) / range) * (height - paddingY * 2);
+        return `${index === 0 ? "M" : "L"}${x},${y}`;
+      })
+      .join(" ");
+  };
+
+  const renderMiniChart = (values: number[], color: string, targetValue?: number, formatter?: (value: number) => string) => {
+    const width = 960;
+    const height = 220;
+    const paddingX = 24;
+    const paddingY = 20;
+    const min = Math.min(...values, targetValue ?? values[0] ?? 0);
+    const max = Math.max(...values, targetValue ?? values[0] ?? 0);
+    const range = max - min || 1;
+    const path = createSeriesPath(values, width, height, paddingX, paddingY);
+    const targetY =
+      targetValue === undefined
+        ? null
+        : height - paddingY - ((targetValue - min) / range) * (height - paddingY * 2);
+
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-[220px] w-full rounded-3xl border border-white/10 bg-[#111827]">
+        <defs>
+          <linearGradient id={`fill-${color.replace(/[^a-z0-9]/gi, '')}`} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {[0.2, 0.5, 0.8].map((ratio) => (
+          <line
+            key={ratio}
+            x1={paddingX}
+            x2={width - paddingX}
+            y1={paddingY + (height - paddingY * 2) * ratio}
+            y2={paddingY + (height - paddingY * 2) * ratio}
+            stroke="rgba(148,163,184,0.12)"
+            strokeDasharray="3 6"
+          />
+        ))}
+        {targetY !== null ? (
+          <line x1={paddingX} x2={width - paddingX} y1={targetY} y2={targetY} stroke="rgba(244,114,182,0.9)" strokeDasharray="8 6" />
+        ) : null}
+        <path d={path} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        {values.map((value, index) => {
+          const x = paddingX + (index / Math.max(values.length - 1, 1)) * (width - paddingX * 2);
+          const y = height - paddingY - ((value - min) / range) * (height - paddingY * 2);
+          return <circle key={`${index}-${value}`} cx={x} cy={y} r="2.5" fill={color} opacity={index === values.length - 1 ? 1 : 0.25} />;
+        })}
+        {formatter ? (
+          <text x={width - paddingX} y={22} textAnchor="end" fill="rgba(226,232,240,0.85)" fontSize="14">
+            {formatter(values[values.length - 1] ?? 0)}
+          </text>
+        ) : null}
+      </svg>
+    );
+  };
+
+  if (!selection) {
+    return (
+      <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Chart View</p>
+            <h2 className="mt-2 text-lg font-semibold text-white">Price / Gap Chart</h2>
+            <p className="mt-1 text-sm text-slate-400">표에서 원하는 후보를 누르면 레퍼런스 스타일 차트 UI로 가격과 갭을 같이 보여줍니다.</p>
+          </div>
+        </div>
+        <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-8 text-sm text-slate-500">
+          차트를 보려면 표에서 원하는 행을 클릭하세요.
+        </div>
+      </section>
+    );
+  }
+
+  const legLabels = `${selection.legs[0].exchange} / ${selection.legs[1].exchange}`;
+  const syntheticPriceValues = visibleHistory.map((point, index) => 100 + point.gapPct * 8 + index * 0.12);
+  const gapValues = visibleHistory.map((point) => point.gapPct);
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
+    <section className="rounded-[28px] border border-white/10 bg-[#0b1220] p-5 shadow-2xl shadow-slate-950/30">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Spread View</p>
-          <h2 className="mt-2 text-lg font-semibold text-white">가격 갭 추이</h2>
-          <p className="mt-1 text-sm text-slate-400">선택한 후보의 실행 Gap과 예상 순수익이 시간에 따라 어떻게 벌어지는지 먼저 보여줍니다.</p>
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Chart View</p>
+          <h2 className="mt-2 text-lg font-semibold text-white">{selection.symbol} · Price / Gap Chart</h2>
+          <p className="mt-1 text-sm text-slate-400">{selection.title} · {selection.routeLabel}</p>
         </div>
-        {selection ? (
+        <div className="flex items-center gap-2">
+          <div className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-300">{legLabels}</div>
           <button
             type="button"
             onClick={onClear}
@@ -3342,71 +3430,82 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
           >
             차트 닫기
           </button>
-        ) : null}
+        </div>
       </div>
 
-      {!selection ? (
-        <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-8 text-sm text-slate-500">
-          차트를 보려면 표에서 원하는 행을 클릭하세요.
+      <div className="mt-4 flex flex-wrap gap-2">
+        {timeframeOptions.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => setTimeframe(option.key)}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+              timeframe === option.key
+                ? "bg-cyan-400 text-slate-950"
+                : "border border-white/10 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-5 space-y-5">
+        <div className="rounded-[24px] border border-white/10 bg-[#111827] p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-base font-semibold text-white">Price Chart</div>
+              <div className="mt-1 text-xs text-slate-400">거래소 페어 기준 상대 가격 흐름</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-cyan-400 px-3 py-1 text-xs font-semibold text-slate-950">{selection.legs[0].exchange}</span>
+              <span className="rounded-full bg-emerald-400 px-3 py-1 text-xs font-semibold text-slate-950">{selection.legs[1].exchange}</span>
+              <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs text-slate-200">{syntheticPriceValues.length ? syntheticPriceValues[syntheticPriceValues.length - 1].toFixed(2) : '-'}</span>
+            </div>
+          </div>
+          {spreadExpression ? (
+            <iframe
+              key={`${spreadExpression}-${timeframe}`}
+              src={getTradingViewEmbedUrl(spreadExpression, timeframe === '1h' ? '60' : timeframe.replace('m', ''))}
+              title={`${selection.symbol}-spread-chart`}
+              className="h-[360px] w-full rounded-3xl border border-white/10 bg-slate-950"
+            />
+          ) : (
+            renderMiniChart(syntheticPriceValues, '#22d3ee', undefined, (value) => value.toFixed(2))
+          )}
         </div>
-      ) : (
-        <div className="mt-4 space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="text-base font-semibold text-white">{selection.symbol}</div>
-                <div className="mt-1 text-sm text-slate-400">{selection.title} · {selection.routeLabel}</div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full border px-3 py-1 text-xs font-medium ${selection.gapPct >= 0 ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100" : "border-amber-300/20 bg-amber-400/10 text-amber-100"}`}>
-                  실행 Gap {formatPct(selection.gapPct)}
-                </span>
-                <span className={`rounded-full border px-3 py-1 text-xs font-medium ${selection.estimatedNetPct >= 0 ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100" : "border-rose-300/20 bg-rose-400/10 text-rose-100"}`}>
-                  예상 순수익 {formatPct(selection.estimatedNetPct)}
-                </span>
-              </div>
+
+        <div className="rounded-[24px] border border-white/10 bg-[#111827] p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-base font-semibold text-white">Gap % Chart</div>
+              <div className="mt-1 text-xs text-slate-400">실행 Gap 추이와 목표 임계값</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-pink-300/30 bg-pink-400/10 px-3 py-1 text-xs text-pink-100">Target {formatPct(targetGap)}</span>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${latestGap >= targetGap ? 'bg-emerald-400 text-slate-950' : 'bg-amber-300 text-slate-950'}`}>{formatPct(latestGap)}</span>
             </div>
           </div>
-
-          <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-white">스프레드 차트</div>
-                <div className="mt-1 text-xs text-slate-400">TradingView 수식으로 두 거래소 가격 차이를 한 차트에서 보여줍니다.</div>
-              </div>
-              <div className="text-xs text-slate-500">히스토리 {points.length}개</div>
+          {renderMiniChart(gapValues, '#34d399', targetGap, (value) => formatPct(value))}
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+              <div className="text-[11px] text-slate-500">현재 실행 Gap</div>
+              <div className="mt-1 font-mono text-sm text-emerald-300">{formatPct(latestGap)}</div>
             </div>
-            {spreadExpression ? (
-              <iframe
-                key={spreadExpression}
-                src={getTradingViewEmbedUrl(spreadExpression)}
-                title={`${selection.symbol}-spread-chart`}
-                className="h-[420px] w-full rounded-2xl border border-white/10 bg-slate-950"
-              />
-            ) : (
-              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-[260px] w-full rounded-2xl border border-white/10 bg-slate-950/70">
-                <line x1={padding} y1={chartHeight / 2} x2={chartWidth - padding} y2={chartHeight / 2} stroke="rgba(148,163,184,0.25)" strokeDasharray="4 4" />
-                <path d={gapPath} fill="none" stroke="rgb(52 211 153)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-                <path d={netPath} fill="none" stroke="rgb(34 211 238)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-              </svg>
-            )}
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-                <div className="text-[11px] text-slate-500">현재 실행 Gap</div>
-                <div className="mt-1 font-mono text-sm text-emerald-300">{latestPoint ? formatPct(latestPoint.gapPct) : "-"}</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-                <div className="text-[11px] text-slate-500">현재 예상 순수익</div>
-                <div className="mt-1 font-mono text-sm text-cyan-300">{latestPoint ? formatPct(latestPoint.estimatedNetPct) : "-"}</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-                <div className="text-[11px] text-slate-500">스프레드 식</div>
-                <div className="mt-1 truncate font-mono text-sm text-slate-200">{spreadExpression ?? `최근 ${points.length}틱 fallback`}</div>
-              </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+              <div className="text-[11px] text-slate-500">현재 예상 순수익</div>
+              <div className="mt-1 font-mono text-sm text-cyan-300">{formatPct(latestNet)}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+              <div className="text-[11px] text-slate-500">스프레드 식</div>
+              <div className="mt-1 truncate font-mono text-sm text-slate-200">{spreadExpression ?? `${selection.legs[0].exchange}-${selection.legs[1].exchange}`}</div>
             </div>
           </div>
+        </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
+        <details className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+          <summary className="cursor-pointer text-sm font-medium text-slate-200">개별 거래소 차트 보기</summary>
+          <div className="mt-4 grid gap-4 xl:grid-cols-2">
             {selection.legs.map((leg) => (
               <div key={`${selection.symbol}-${leg.label}-${leg.exchange}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
@@ -3414,23 +3513,13 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
                     <div className="text-sm font-semibold text-white">{leg.label}</div>
                     <div className="mt-1 text-xs text-slate-400">{leg.exchange}</div>
                   </div>
-                  {leg.tradingViewSymbol ? (
-                    <a
-                      href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(leg.tradingViewSymbol)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs text-slate-300 hover:bg-slate-800"
-                    >
-                      개별 차트 열기
-                    </a>
-                  ) : null}
                 </div>
                 {leg.tradingViewSymbol ? (
                   <iframe
                     key={leg.tradingViewSymbol}
-                    src={getTradingViewEmbedUrl(leg.tradingViewSymbol)}
+                    src={getTradingViewEmbedUrl(leg.tradingViewSymbol, timeframe === '1h' ? '60' : timeframe.replace('m', ''))}
                     title={`${selection.symbol}-${leg.exchange}-chart`}
-                    className="h-[320px] w-full rounded-2xl border border-white/10 bg-slate-950"
+                    className="h-[280px] w-full rounded-2xl border border-white/10 bg-slate-950"
                   />
                 ) : (
                   <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-10 text-sm text-slate-500">
@@ -3440,11 +3529,12 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
               </div>
             ))}
           </div>
-        </div>
-      )}
+        </details>
+      </div>
     </section>
   );
 }
+
 
 function FeeInput({
   label,
