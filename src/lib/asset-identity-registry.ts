@@ -26,6 +26,9 @@ const BLOCKED_CROSS_EXCHANGE_PAIRS: Record<string, Set<string>> = {
     "A","ADA","AERGO","ALLO","ANC","AR","ATD","ATH","BEAM","BOBA","CBK","CHZ","COS","DON","DOOD","ELF","FLR","G","GAS","HOOK","JOE","KAT","KLY","KSM","LIT","MANTA","MEETONE","MERL","MNT","MTL","NEO","NSBT","NXPC","ONX","PURSE","QI","QKC","REI","RON","S","SCR","SGB","SNS","SNT","SOLO","WAVES","WAXP","XPL","XPR","ZK","ZRC"
   ]),
   "OKX|Gate.io": new Set(["EDGE"]),
+  "Binance|Gate.io": new Set([
+    "A","ADD","AE","AERGO","AGIX","AKRO","ALPACA","AMB","AMD","ANC","ANY","ARS","AST","ATD","ATEM","AUTO","AXL","BADGER","BAKE","BASED","BCHA","BEAM","BETA","BIFI","BLASTETH","BNC","BNX","BOBA","BOND","BOO","BTCST","BTG","BTS","BTTOLD","BUSD","BYN","CAD","CBK","CDT","CLV","COCOS","COMBO","COVER","CRC","CREAM","CVP","DAI","DAR","DNT","DOCK","DON","DOOD","DOP","DOT","DREP","DRX","EASY","EFI","EGP","ELF","ELON","EON","EOP","EOS","EPS","EPX","ERN","EZ","FIN","FLM","FOR","FRONT","FTM","FUN","FXS","GAL","GAS","GEL","GFT","GNT","GQ","GST","GTC","GTO","GUN","GXS","GYEN","HARD","HEGIC","HIFI","HNT","IHC","IRIS","ISK","KAT","KDA","KEY","KLAY","KNCL","KP3R","KSM","LBA","LEND","LINA","LIT","LOKA","LOOM","LTO","LUMIA","MA","MAD","MANTA","MAPS","MBL","MC","MDA","MDX","MEETONE","MERL","MILK"
+  ]),
 };
 
 function getPairKey(leftExchange: string, rightExchange: string) {
