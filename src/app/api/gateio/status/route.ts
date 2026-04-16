@@ -12,6 +12,7 @@ type GateIoCurrency = {
     name?: string;
     deposit_disabled?: boolean;
     withdraw_disabled?: boolean;
+    contract_address?: string;
   }>;
 };
 
@@ -38,6 +39,7 @@ export async function GET() {
             normalizedNetwork: normalizeNetworkName(chain.name),
             depositEnabled: chain.deposit_disabled === undefined ? null : !chain.deposit_disabled,
             withdrawEnabled: chain.withdraw_disabled === undefined ? null : !chain.withdraw_disabled,
+            contractAddress: chain.contract_address ?? null,
           })) ?? [],
       };
       return acc;

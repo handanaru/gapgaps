@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { getDexExecutionStatus } from "@/lib/dex-execution";
 import { getDexTokenBySymbol } from "@/lib/dex-tokens";
 import { calculateArbitrage, calculateCrossExchangeArbitrage } from "@/lib/exchanges";
-import { formatNetworkSummary, getMatchedNetworks, summarizeExecutableNetworks } from "@/lib/networks";
+import { formatNetworkSummary, getMatchedNetworks, hasContractMismatch, summarizeExecutableNetworks } from "@/lib/networks";
 import { ArbitrageOpportunity, NormalizedTicker, TransferStatus } from "@/lib/types";
 
 type ApiResponse = {
@@ -610,6 +610,10 @@ function isTransferReadyForOpportunity(
   const symbol = opportunity.symbol.replace("/KRW", "");
   const leftStatus = leftStatuses[symbol];
   const rightStatus = rightStatuses?.[symbol];
+
+  if (hasContractMismatch(leftStatus, rightStatus)) {
+    return false;
+  }
 
   if (isDomesticKrwLeg(opportunity.buyExchange)) {
     return leftStatus?.withdrawEnabled === true && rightStatus?.depositEnabled === true;

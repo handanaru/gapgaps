@@ -12,6 +12,8 @@ type BinanceNetwork = {
   networkDisplay?: string;
   depositEnable?: boolean;
   withdrawEnable?: boolean;
+  contractAddress?: string;
+  contractAddr?: string;
 };
 
 type BinanceAsset = {
@@ -77,6 +79,7 @@ export async function GET() {
             normalizedNetwork: normalizeNetworkName(network.networkDisplay ?? network.network ?? null),
             depositEnabled: network.depositEnable ?? null,
             withdrawEnabled: network.withdrawEnable ?? null,
+            contractAddress: network.contractAddress ?? network.contractAddr ?? null,
           })) ?? [],
       };
       return acc;

@@ -70,12 +70,49 @@ export function summarizeExecutableNetworks(status: TransferStatus | undefined) 
   return status.networks.filter((network) => network.depositEnabled === true || network.withdrawEnabled === true);
 }
 
+function normalizeContractAddress(value: string | null | undefined) {
+  const normalized = value?.trim().toLowerCase();
+  return normalized && normalized.length > 0 ? normalized : null;
+}
+
+function isNetworkContractCompatible(left: TransferNetworkStatus, right: TransferNetworkStatus) {
+  const leftContract = normalizeContractAddress(left.contractAddress);
+  const rightContract = normalizeContractAddress(right.contractAddress);
+
+  if (!leftContract || !rightContract) {
+    return true;
+  }
+
+  return leftContract === rightContract;
+}
+
 export function getMatchedNetworks(leftStatus: TransferStatus | undefined, rightStatus: TransferStatus | undefined) {
   const leftNetworks = summarizeExecutableNetworks(leftStatus).filter((network) => network.withdrawEnabled === true);
   const rightNetworks = summarizeExecutableNetworks(rightStatus).filter((network) => network.depositEnabled === true);
-  const rightSet = new Set(rightNetworks.map((network) => network.normalizedNetwork).filter(Boolean));
 
-  return leftNetworks.filter((network) => network.normalizedNetwork && rightSet.has(network.normalizedNetwork));
+  return leftNetworks.filter(
+    (leftNetwork) =>
+      leftNetwork.normalizedNetwork &&
+      rightNetworks.some(
+        (rightNetwork) => rightNetwork.normalizedNetwork === leftNetwork.normalizedNetwork && isNetworkContractCompatible(leftNetwork, rightNetwork)
+      )
+  );
+}
+
+export function hasContractMismatch(leftStatus: TransferStatus | undefined, rightStatus: TransferStatus | undefined) {
+  const leftNetworks = summarizeExecutableNetworks(leftStatus).filter((network) => network.withdrawEnabled === true && network.normalizedNetwork);
+  const rightNetworks = summarizeExecutableNetworks(rightStatus).filter((network) => network.depositEnabled === true && network.normalizedNetwork);
+
+  return leftNetworks.some((leftNetwork) => {
+    const counterpart = rightNetworks.find((rightNetwork) => rightNetwork.normalizedNetwork === leftNetwork.normalizedNetwork);
+    if (!counterpart) return false;
+
+    const leftContract = normalizeContractAddress(leftNetwork.contractAddress);
+    const rightContract = normalizeContractAddress(counterpart.contractAddress);
+    if (!leftContract || !rightContract) return false;
+
+    return leftContract !== rightContract;
+  });
 }
 
 export function formatNetworkSummary(networks: TransferNetworkStatus[]) {

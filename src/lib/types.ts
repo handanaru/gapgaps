@@ -47,4 +47,5 @@ export type TransferNetworkStatus = {
   normalizedNetwork: string | null;
   depositEnabled: boolean | null;
   withdrawEnabled: boolean | null;
+  contractAddress?: string | null;
 };
