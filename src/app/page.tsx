@@ -154,19 +154,6 @@ type AggregatedOpportunityRow = {
   };
 };
 
-type OpportunityPreviewConfig = {
-  id: string;
-  title: string;
-  description: string;
-  opportunities: ArbitrageOpportunity[];
-  accentClassName: string;
-  badgeLabel: string;
-  badgeTone: "emerald" | "amber" | "rose" | "slate";
-  detailAnchor: string;
-  detailTitle: string;
-};
-
-
 const DEFAULT_BINANCE_TAKER_FEE = 0.05;
 const DEFAULT_BITHUMB_TAKER_FEE = 0.04;
 const DEFAULT_OKX_TAKER_FEE = 0.05;
@@ -1211,91 +1198,6 @@ export default function Home() {
       return isTransferReadyForOpportunity(opportunity, bithumbTransferStatus);
     }).length;
   }, [binanceTransferStatus, bithumbTransferStatus, bybitTransferStatus, gateIoTransferStatus, topAnyCrossExchange]);
-  const executableBinanceCount = useMemo(
-    () => topBithumbBinance.filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, binanceTransferStatus)).length,
-    [bithumbTransferStatus, binanceTransferStatus, topBithumbBinance]
-  );
-  const executableOkxCount = useMemo(
-    () => topCrossExchange.filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus)).length,
-    [bithumbTransferStatus, topCrossExchange]
-  );
-  const executableGateIoCount = useMemo(
-    () => topBithumbGateIo.filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, gateIoTransferStatus)).length,
-    [bithumbTransferStatus, gateIoTransferStatus, topBithumbGateIo]
-  );
-  const opportunityPreviewConfigs = useMemo<OpportunityPreviewConfig[]>(() => {
-    const executableBithumbBinance = topBithumbBinance
-      .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, binanceTransferStatus))
-      .slice(0, 2);
-    const executableBithumbOkx = topCrossExchange
-      .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus))
-      .slice(0, 2);
-    const executableBithumbGateIo = topBithumbGateIo
-      .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, gateIoTransferStatus))
-      .slice(0, 2);
-    const executableUpbitBithumb = topUpbitBithumb
-      .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus))
-      .slice(0, 2);
-
-    return [
-      {
-        id: "binance",
-        title: "Bithumb vs Binance",
-        description: "실행 가능한 김프 후보만 먼저 보여주는 대표 루트",
-        opportunities: executableBithumbBinance,
-        accentClassName: "from-amber-300/20 to-transparent",
-        badgeLabel: executableBinanceCount > 0 ? `실행 가능 ${executableBinanceCount}` : "실행 가능 후보 없음",
-        badgeTone: executableBinanceCount > 0 ? "emerald" : "amber",
-        detailAnchor: "bithumb-binance",
-        detailTitle: "Bithumb KRW vs Binance Spot",
-      },
-      {
-        id: "okx",
-        title: "Bithumb vs OKX",
-        description: "실행 가능한 대체 거래소 후보만 먼저 보여주는 보조 루트",
-        opportunities: executableBithumbOkx,
-        accentClassName: "from-cyan-300/20 to-transparent",
-        badgeLabel: executableOkxCount > 0 ? `실행 가능 ${executableOkxCount}` : "실행 가능 후보 없음",
-        badgeTone: executableOkxCount > 0 ? "emerald" : "amber",
-        detailAnchor: "bithumb-okx",
-        detailTitle: "Bithumb KRW vs OKX Spot",
-      },
-      {
-        id: "gateio",
-        title: "Bithumb vs Gate.io",
-        description: "체인 상태까지 확인된 실행 가능 후보만 먼저 보여줍니다",
-        opportunities: executableBithumbGateIo,
-        accentClassName: "from-emerald-300/20 to-transparent",
-        badgeLabel: executableGateIoCount > 0 ? `실행 가능 ${executableGateIoCount}` : "실행 가능 후보 없음",
-        badgeTone: executableGateIoCount > 0 ? "emerald" : "amber",
-        detailAnchor: "bithumb-gateio",
-        detailTitle: "Bithumb KRW vs Gate.io Spot",
-      },
-      {
-        id: "domestic",
-        title: "Upbit vs Bithumb",
-        description: "입출금 가능성이 있는 국내 원화 차액만 먼저 보는 보드",
-        opportunities: executableUpbitBithumb,
-        accentClassName: "from-violet-300/20 to-transparent",
-        badgeLabel: executableUpbitBithumb.length > 0 ? `후보 ${executableUpbitBithumb.length}` : "후보 없음",
-        badgeTone: executableUpbitBithumb.length > 0 ? "emerald" : "amber",
-        detailAnchor: "upbit-bithumb",
-        detailTitle: "Upbit KRW vs Bithumb KRW",
-      },
-    ];
-  }, [
-    bithumbTransferStatus,
-    binanceTransferStatus,
-    gateIoTransferStatus,
-    executableBinanceCount,
-    executableGateIoCount,
-    executableOkxCount,
-    topBithumbBinance,
-    topBithumbGateIo,
-    topCrossExchange,
-    topUpbitBithumb,
-  ]);
-
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) {
       setNotificationPermission("unsupported");
@@ -1611,6 +1513,13 @@ export default function Home() {
     topUpbitGateIo,
     topBithumbSolanaDex,
   ]);
+  const quickScanRows = useMemo(() => {
+    return aggregatedOpportunityRows
+      .filter((row) => row.opportunity.estimatedNetPct >= 2)
+      .sort((left, right) => right.opportunity.estimatedNetPct - left.opportunity.estimatedNetPct)
+      .slice(0, 12);
+  }, [aggregatedOpportunityRows]);
+
   const filteredOpportunityRows = useMemo(() => {
     return aggregatedOpportunityRows.filter((row) => {
       if (opportunityFilterKind !== "all" && row.kind !== opportunityFilterKind) {
@@ -1842,23 +1751,63 @@ export default function Home() {
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
           <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Quick Boards</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">시장 스캔을 카드형으로 먼저 보기</h2>
-              <p className="mt-1 text-sm text-slate-400">긴 테이블을 보기 전에, 자주 보는 루트를 요약 카드로 먼저 스캔할 수 있게 정리했습니다.</p>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Quick Scan</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">2% 이상 통합 후보</h2>
+              <p className="mt-1 text-sm text-slate-400">영역 구분 없이 예상 순수익 2% 이상인 후보만 바로 보여줍니다.</p>
             </div>
-            <div className="text-xs text-slate-500">각 카드에서 상위 3개 후보만 먼저 보여줍니다.</div>
+            <div className="text-xs text-slate-500">상위 12개</div>
           </div>
-          <div className="grid gap-4 xl:grid-cols-2">
-            {opportunityPreviewConfigs.map((config) => (
-              <OpportunityPreviewPanel
-                key={config.id}
-                config={config}
-                onOpenDetail={(opportunity) => {
-                  setSelectedChart(getChartSelection(config.detailTitle, opportunity));
-                  document.getElementById(config.detailAnchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-              />
-            ))}
+          <div className="space-y-3">
+            {quickScanRows.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-4 text-sm text-slate-500">2% 이상 후보가 없습니다.</div>
+            ) : (
+              quickScanRows.map((row) => (
+                <button
+                  key={row.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedChart(getChartSelection(row.sourceTitle, row.opportunity));
+                    const targetId =
+                      row.sourceTitle === "Bithumb KRW vs Binance Spot" ? "bithumb-binance" :
+                      row.sourceTitle === "Bithumb KRW vs OKX Spot" ? "bithumb-okx" :
+                      row.sourceTitle === "Bithumb KRW vs Gate.io Spot" ? "bithumb-gateio" :
+                      row.sourceTitle === "Upbit KRW vs Bithumb KRW" ? "upbit-bithumb" :
+                      row.sourceTitle === "Upbit KRW vs OKX Spot" ? "upbit-okx" :
+                      row.sourceTitle === "Upbit KRW vs Binance Spot" ? "upbit-binance" :
+                      row.sourceTitle === "Upbit KRW vs Bybit Spot" ? "upbit-bybit" :
+                      row.sourceTitle === "Upbit KRW vs Gate.io Spot" ? "upbit-gateio" :
+                      row.sourceTitle === "Bithumb KRW vs Solana DEX" ? "cex-dex" :
+                      row.sourceTitle === "Binance Perp vs OKX Swap" ? "perp-binance-okx" :
+                      row.sourceTitle === "Binance Perp vs Bybit Perp" ? "perp-binance-bybit" :
+                      row.sourceTitle === "Binance Perp vs Gate.io Perp" ? "perp-binance-gateio" :
+                      row.sourceTitle === "OKX Swap vs Bybit Perp" ? "perp-okx-bybit" :
+                      row.sourceTitle === "OKX Swap vs Gate.io Perp" ? "perp-okx-gateio" :
+                      row.sourceTitle === "Bybit Perp vs Gate.io Perp" ? "perp-bybit-gateio" :
+                      row.kind === "basis" ? "basis" : row.kind === "cex-dex" ? "cex-dex" : row.kind === "cex-cex" ? "cex-cex" : "perp-perp";
+                    document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-4 text-left transition hover:border-cyan-300/30 hover:bg-slate-900"
+                >
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold text-white">{row.opportunity.symbol}</span>
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-300">{row.sourceTitle}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400">{row.routeLabel}</div>
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                        <span>매수 {formatPrice(row.opportunity.buyPrice)}</span>
+                        <span>매도 {formatPrice(row.opportunity.sellPrice)}</span>
+                        <span>Gap {formatPct(row.opportunity.gapPct)}</span>
+                      </div>
+                    </div>
+                    <div className={`text-right font-mono text-lg font-semibold ${row.opportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                      {formatPct(row.opportunity.estimatedNetPct)}
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </section>
 
@@ -3290,65 +3239,6 @@ function TransferStatusBadge({ enabled, label }: { enabled: boolean | null; labe
 
 function TransferNoticeBadge({ text }: { text: string }) {
   return <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-2 py-1 text-[11px] text-amber-100">{text}</span>;
-}
-
-function OpportunityPreviewPanel({ config, onOpenDetail }: { config: OpportunityPreviewConfig; onOpenDetail: (opportunity: ArbitrageOpportunity) => void }) {
-  const badgeClassName =
-    config.badgeTone === "emerald"
-      ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-100"
-      : config.badgeTone === "amber"
-        ? "border-amber-300/25 bg-amber-400/15 text-amber-100"
-        : config.badgeTone === "rose"
-          ? "border-rose-300/25 bg-rose-400/15 text-rose-100"
-          : "border-white/10 bg-slate-950/70 text-slate-300";
-
-  return (
-    <div className={`rounded-3xl border border-white/10 bg-gradient-to-br ${config.accentClassName} p-4 sm:p-5`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-semibold text-white">{config.title}</h3>
-          <p className="mt-1 text-sm text-slate-400">{config.description}</p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className={`rounded-full border px-3 py-1 text-xs font-medium ${badgeClassName}`}>{config.badgeLabel}</div>
-          <div className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-[11px] text-slate-300">
-            Top {Math.min(config.opportunities.length, 3)}
-          </div>
-        </div>
-      </div>
-      <div className="mt-4 space-y-3">
-        {config.opportunities.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-4 text-sm text-slate-500">조건에 맞는 후보가 없습니다.</div>
-        ) : (
-          config.opportunities.map((opportunity) => (
-            <button
-              type="button"
-              key={`${config.id}-${opportunity.symbol}-${opportunity.buyExchange}-${opportunity.sellExchange}`}
-              onClick={() => onOpenDetail(opportunity)}
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-3 text-left transition hover:border-cyan-300/30 hover:bg-slate-900"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-white">{opportunity.symbol}</div>
-                  <div className="mt-1 text-[11px] text-slate-400">
-                    {opportunity.buyExchange} {"->"} {opportunity.sellExchange}
-                  </div>
-                </div>
-                <div className={`text-right text-sm font-mono tabular-nums ${opportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                  {formatPct(opportunity.estimatedNetPct)}
-                </div>
-              </div>
-              <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-400">
-                <span>매수 {formatPrice(opportunity.buyPrice)}</span>
-                <span>매도 {formatPrice(opportunity.sellPrice)}</span>
-                <span>Gap {formatPct(opportunity.gapPct)}</span>
-              </div>
-            </button>
-          ))
-        )}
-      </div>
-    </div>
-  );
 }
 
 function SummaryCard({ label, value, hint }: { label: string; value: string; hint: string }) {
