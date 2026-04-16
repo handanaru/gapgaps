@@ -3478,8 +3478,8 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
         <div className="rounded-[24px] border border-white/10 bg-[#111827] p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <div className="text-base font-semibold text-white">Gap % Chart</div>
-              <div className="mt-1 text-xs text-slate-400">실행 Gap 추이와 목표 임계값</div>
+              <div className="text-lg font-semibold text-white">Gap % Chart</div>
+              <div className="mt-1 text-[11px] text-slate-400">실행 Gap 추이와 목표 임계값</div>
             </div>
             <div className="flex items-center gap-2">
               <span className="rounded-full border border-pink-300/30 bg-pink-400/10 px-3 py-1 text-xs text-pink-100">Target {formatPct(targetGap)}</span>
