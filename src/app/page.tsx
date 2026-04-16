@@ -1173,10 +1173,22 @@ export default function Home() {
   const topOkxBybitPerp = okxBybitPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topOkxGateIoPerp = okxGateIoPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topBybitGateIoPerp = bybitGateIoPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
-  const topCrossExchange = bithumbOkxOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
-  const topBithumbBinance = bithumbBinanceOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
-  const topBithumbBybit = bithumbBybitOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
-  const topBithumbGateIo = bithumbGateIoOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
+  const topCrossExchange = bithumbOkxOpportunities
+    .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
+    .filter((item) => isTransferReadyForOpportunity(item, bithumbTransferStatus))
+    .slice(0, 15);
+  const topBithumbBinance = bithumbBinanceOpportunities
+    .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
+    .filter((item) => isTransferReadyForOpportunity(item, bithumbTransferStatus, binanceTransferStatus))
+    .slice(0, 15);
+  const topBithumbBybit = bithumbBybitOpportunities
+    .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
+    .filter((item) => isTransferReadyForOpportunity(item, bithumbTransferStatus, bybitTransferStatus))
+    .slice(0, 15);
+  const topBithumbGateIo = bithumbGateIoOpportunities
+    .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
+    .filter((item) => isTransferReadyForOpportunity(item, bithumbTransferStatus, gateIoTransferStatus))
+    .slice(0, 15);
   const topUpbitOkx = upbitOkxOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topUpbitBinance = upbitBinanceOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topUpbitBybit = upbitBybitOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
