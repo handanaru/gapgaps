@@ -1797,7 +1797,7 @@ export default function Home() {
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Quick Scan</p>
               <h2 className="mt-2 text-xl font-semibold text-white">2% 이상 통합 후보</h2>
-              <p className="mt-1 text-sm text-slate-400">영역 구분 없이 예상 순수익 2% 이상인 후보만 바로 보여줍니다.</p>
+              <p className="mt-1 text-sm text-slate-400">전송 가능성과 자산 동일성 검증을 통과한 후보 중 예상 순수익 2% 이상만 바로 보여줍니다.</p>
             </div>
             <div className="text-xs text-slate-500">상위 12개</div>
           </div>

@@ -1,3 +1,4 @@
+import { isSameAsset } from "@/lib/asset-identity-registry";
 import { ArbitrageOpportunity, NormalizedTicker } from "@/lib/types";
 
 const STABLE_QUOTES = ["USDT", "FDUSD", "USDC", "BUSD", "TUSD", "BTC", "ETH", "BNB", "TRY", "EUR", "USD", "KRW"];
@@ -411,6 +412,7 @@ export function calculateCrossExchangeArbitrage(
   for (const left of leftTickers) {
     const right = rightMap.get(left.base);
     if (!right) continue;
+    if (!isSameAsset(left, right)) continue;
 
     const leftPriceKrw = left.quote === "KRW" ? left.price : left.price * (options.rightQuoteToKrw ?? 1);
     const rightPriceKrw = right.quote === "KRW" ? right.price : right.price * (options.rightQuoteToKrw ?? 1);
