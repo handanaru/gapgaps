@@ -1789,10 +1789,10 @@ export default function Home() {
           <div className="rounded-[32px] border border-white/10 bg-white/[0.04] p-6">
             <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Market Pulse</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <SummaryCard label="Binance Spot" value={binanceSpotTickers.length.toLocaleString()} hint="USDT 마켓 기준" />
-              <SummaryCard label="Bithumb KRW" value={bithumbSpotTickers.length.toLocaleString()} hint="원화 마켓 종목 수" />
-              <SummaryCard label="OKX Spot" value={okxSpotTickers.length.toLocaleString()} hint="USDT 기준 비교 대상" />
-              <SummaryCard label="Bybit / Gate.io" value={`${bybitSpotTickers.length.toLocaleString()} / ${gateIoSpotTickers.length.toLocaleString()}`} hint="대체 해외 현물 대상" />
+              <SummaryCard label="국내 KRW" value={`${bithumbSpotTickers.length.toLocaleString()} / ${upbitSpotTickers.length.toLocaleString()}`} hint="Bithumb / Upbit" />
+              <SummaryCard label="해외 Spot" value={`${binanceSpotTickers.length.toLocaleString()} / ${okxSpotTickers.length.toLocaleString()}`} hint="Binance / OKX" />
+              <SummaryCard label="대체 해외" value={`${bybitSpotTickers.length.toLocaleString()} / ${gateIoSpotTickers.length.toLocaleString()}`} hint="Bybit / Gate.io" />
+              <SummaryCard label="DEX 후보" value={solanaDexTickers.length.toLocaleString()} hint="Solana DEX" />
             </div>
           </div>
         </section>
