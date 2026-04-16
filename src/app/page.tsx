@@ -692,7 +692,8 @@ export default function Home() {
   const [selectedChart, setSelectedChart] = useState<ChartSelection | null>(null);
   const [settingsCollapsed, setSettingsCollapsed] = useState(true);
   const [alertsCollapsed, setAlertsCollapsed] = useState(true);
-  const [workflowCollapsed, setWorkflowCollapsed] = useState(false);
+  const [workflowCollapsed, setWorkflowCollapsed] = useState(true);
+  const [filteredViewCollapsed, setFilteredViewCollapsed] = useState(true);
   const [matrixCollapsed, setMatrixCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
   const [opportunityFilterKind, setOpportunityFilterKind] = useState<OpportunityFilterKind>("all");
@@ -1930,6 +1931,209 @@ export default function Home() {
           </div>
         </section>
 
+        <OpportunityChartPanel selection={selectedChart} onClear={() => setSelectedChart(null)} />
+
+        <WithdrawalWorkflowSection
+          candidate={workflowCandidate}
+          networkState={workflowNetworkState}
+          logEntries={workflowLog}
+          mode={workflowMode}
+          step={workflowStep}
+          quantity={workflowQuantity}
+          lastUpdated={workflowUpdatedAt}
+          collapsed={workflowCollapsed}
+          onToggleCollapsed={() => setWorkflowCollapsed((prev) => !prev)}
+          onQuantityChange={setWorkflowQuantity}
+          onApproveQuantity={() => {
+            setWorkflowStep("quantity-approved");
+            setWorkflowUpdatedAt(Date.now());
+          }}
+          onApproveAuth={() => {
+            setWorkflowStep("auth-approved");
+            setWorkflowUpdatedAt(Date.now());
+          }}
+          onExecute={() => {
+            setWorkflowStep("executed");
+            setWorkflowUpdatedAt(Date.now());
+          }}
+          onReset={() => {
+            setWorkflowMode("auto");
+            setWorkflowStep(workflowTopCandidate ? "detected" : "idle");
+            setWorkflowCandidate(workflowTopCandidate);
+            setWorkflowQuantity("");
+            setWorkflowUpdatedAt(Date.now());
+          }}
+        />
+
+        <section className="rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-2xl shadow-slate-950/40">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Filtered View</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">통합 기회 리스트</h2>
+              <p className="mt-1 max-w-3xl text-sm text-slate-400">텔레그램 알림 외에 전체 후보를 한 번에 훑어볼 때만 펼쳐서 쓰는 보조 리스트입니다.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
+                <div>현재 필터</div>
+                <div className="mt-1 text-base font-semibold text-white">
+                  {opportunityFilterKind === "all"
+                    ? "전체"
+                    : opportunityFilterKind === "basis"
+                      ? "현선갭"
+                      : opportunityFilterKind === "perp-perp"
+                        ? "선선갭"
+                        : opportunityFilterKind === "cex-cex"
+                          ? "국내↔해외 CEX"
+                          : "CEX-DEX"}
+                </div>
+                <div className="mt-1 text-slate-500">{opportunityExecutableOnly ? "실행 가능만 보기" : "전체 상태 보기"}</div>
+              </div>
+              <CollapseButton collapsed={filteredViewCollapsed} onClick={() => setFilteredViewCollapsed((prev) => !prev)} />
+            </div>
+          </div>
+
+          {!filteredViewCollapsed ? (
+            <>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {[
+                  { key: "all", label: "전체" },
+                  { key: "basis", label: "현선갭" },
+                  { key: "perp-perp", label: "선선갭" },
+                  { key: "cex-cex", label: "국내↔해외 CEX" },
+                  { key: "cex-dex", label: "CEX-DEX" },
+                ].map((filter) => (
+                  <button
+                    key={filter.key}
+                    type="button"
+                    onClick={() => setOpportunityFilterKind(filter.key as OpportunityFilterKind)}
+                    className={`rounded-full border px-4 py-2 text-sm transition ${
+                      opportunityFilterKind === filter.key
+                        ? "border-cyan-400/30 bg-cyan-400/15 text-cyan-100"
+                        : "border-white/10 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+                <label className="ml-auto flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={opportunityExecutableOnly}
+                    onChange={(event) => setOpportunityExecutableOnly(event.target.checked)}
+                    className="accent-cyan-400"
+                  />
+                  실행 가능만 보기
+                </label>
+              </div>
+
+              <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
+                <table className="min-w-full table-fixed divide-y divide-white/10 text-sm">
+                  <thead className="bg-slate-900/70 text-slate-300">
+                    <tr>
+                      <th className="w-[220px] px-4 py-3 text-left font-medium">소스</th>
+                      <th className="w-[130px] px-4 py-3 text-left font-medium">심볼</th>
+                      <th className="w-[360px] px-4 py-3 text-left font-medium">경로 / 가격 / 네트워크</th>
+                      <th className="w-[140px] px-4 py-3 text-left font-medium">실행 Gap</th>
+                      <th className="w-[150px] px-4 py-3 text-left font-medium">예상 순수익</th>
+                      <th className="px-4 py-3 text-left font-medium">상태</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 bg-slate-950/30">
+                    {filteredOpportunityRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                          현재 필터에서 보여줄 기회가 없습니다.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredOpportunityRows.slice(0, 40).map((row) => {
+                        const transferSymbol = row.opportunity.symbol.replace("/KRW", "");
+                        const leftTransferStatus = row.transferStatusConfig?.leftStatuses[transferSymbol];
+                        const rightTransferStatus = row.transferStatusConfig?.rightStatuses?.[transferSymbol];
+                        const executionStatus = row.transferStatusConfig
+                          ? getExecutionStatus(row.opportunity, leftTransferStatus, rightTransferStatus)
+                          : { label: "참고용", tone: "border-white/10 bg-slate-900/80 text-slate-400" };
+                        const boardMode = getOpportunityBoardMode(row.sourceTitle);
+                        const crossPrices = getCrossMarketPrices(row.opportunity);
+                        const foreignPriceMap = foreignPriceMapBySourceTitle[row.sourceTitle];
+                        const foreignPrice = foreignPriceMap?.get(transferSymbol);
+                        const leftNetworkSummary = row.transferStatusConfig ? formatNetworkSummary(summarizeExecutableNetworks(leftTransferStatus)) : null;
+                        const rightNetworkSummary = row.transferStatusConfig ? formatNetworkSummary(summarizeExecutableNetworks(rightTransferStatus)) : null;
+                        const matchedNetworks =
+                          row.transferStatusConfig && leftTransferStatus && rightTransferStatus
+                            ? formatNetworkSummary(getMatchedNetworks(leftTransferStatus, rightTransferStatus))
+                            : null;
+                        const formatBoardPrice = (exchangeLabel: string, value: number) => {
+                          if (row.kind === "perp-perp") return formatOriginalPrice(value, "USDT");
+                          if (exchangeLabel.includes("Bithumb") || exchangeLabel.includes("Upbit")) return formatPrice(value);
+                          if (usdtKrwRate) return `${formatPrice(value * usdtKrwRate)} (${formatOriginalPrice(value, "USDT")})`;
+                          return formatOriginalPrice(value, "USDT");
+                        };
+
+                        return (
+                          <tr
+                            key={row.id}
+                            className="cursor-pointer hover:bg-white/5"
+                            onClick={() => {
+                              setSelectedChart(getChartSelection(row.sourceTitle, row.opportunity));
+                            }}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="text-sm font-medium text-white">{row.sourceTitle}</div>
+                              <div className="mt-1 text-xs text-slate-500">{getOpportunityKindLabel(row.kind)}</div>
+                            </td>
+                            <td className="px-4 py-3 font-medium text-white">{row.opportunity.symbol}</td>
+                            <td className="px-4 py-3 text-slate-300">
+                              <div className="text-sm text-white">{row.routeLabel}</div>
+                              <div className="mt-2 space-y-1.5 text-xs text-slate-400">
+                                {boardMode === "krw-cross" ? (
+                                  <>
+                                    <div>{row.opportunity.buyExchange} {formatBoardPrice(row.opportunity.buyExchange, row.opportunity.buyPrice)}</div>
+                                    <div>
+                                      {row.opportunity.sellExchange}{" "}
+                                      {foreignPrice
+                                        ? `${formatPrice(crossPrices.spotPrice)} (${formatOriginalPrice(foreignPrice.price, foreignPrice.quote)})`
+                                        : formatBoardPrice(row.opportunity.sellExchange, row.opportunity.sellPrice)}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div>{row.opportunity.buyExchange} {formatBoardPrice(row.opportunity.buyExchange, row.opportunity.buyPrice)}</div>
+                                    <div>{row.opportunity.sellExchange} {formatBoardPrice(row.opportunity.sellExchange, row.opportunity.sellPrice)}</div>
+                                  </>
+                                )}
+                                {row.transferStatusConfig ? (
+                                  <>
+                                    <div className="pt-1 text-[11px] text-slate-500">{row.transferStatusConfig.leftExchangeLabel} 네트워크: {leftNetworkSummary}</div>
+                                    <div className="text-[11px] text-slate-500">{row.transferStatusConfig.rightExchangeLabel} 네트워크: {rightNetworkSummary}</div>
+                                    <div className="text-[11px] text-cyan-200/80">공통 네트워크: {matchedNetworks && matchedNetworks !== "네트워크 정보 없음" ? matchedNetworks : "확인 불가"}</div>
+                                  </>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className={`px-4 py-3 font-mono tabular-nums ${row.opportunity.gapPct >= 0 ? "text-emerald-300" : "text-amber-300"}`}>{formatPct(row.opportunity.gapPct)}</td>
+                            <td className={`px-4 py-3 font-mono tabular-nums font-semibold ${row.opportunity.estimatedNetPct > 0 ? "text-emerald-400" : "text-rose-300"}`}>{formatPct(row.opportunity.estimatedNetPct)}</td>
+                            <td className="px-4 py-3"><span className={`rounded-full border px-2.5 py-1 text-xs ${executionStatus.tone}`}>{executionStatus.label}</span></td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <CollapsedSummary
+              items={filteredOpportunityRows.slice(0, 3).map((row) => ({
+                id: row.id,
+                primary: `${row.opportunity.symbol} · ${row.sourceTitle}`,
+                secondary: `${formatPct(row.opportunity.estimatedNetPct)} · ${row.routeLabel}`,
+                accent: row.opportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300",
+              }))}
+              emptyLabel="요약할 통합 기회가 없습니다."
+            />
+          )}
+        </section>
         <OpportunityChartPanel selection={selectedChart} onClear={() => setSelectedChart(null)} />
 
         <WithdrawalWorkflowSection
