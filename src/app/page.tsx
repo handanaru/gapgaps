@@ -1056,6 +1056,24 @@ export default function Home() {
     });
   }, [upbitSpotTickers, gateIoSpotTickers, usdtKrwRate, bithumbFeePct, gateIoFeePct, minVolumeUsdt]);
 
+  const upbitBithumbOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
+    const filteredUpbit =
+      minVolumeUsdt > 0
+        ? upbitSpotTickers.filter((ticker) => ticker.volume24h !== undefined && ticker.volume24h / (usdtKrwRate || 1) >= minVolumeUsdt)
+        : upbitSpotTickers;
+    const filteredBithumb =
+      minVolumeUsdt > 0
+        ? bithumbSpotTickers.filter((ticker) => ticker.volume24h !== undefined && ticker.volume24h / (usdtKrwRate || 1) >= minVolumeUsdt)
+        : bithumbSpotTickers;
+
+    return calculateCrossExchangeArbitrage(filteredUpbit, filteredBithumb, {
+      leftFeePct: bithumbFeePct,
+      rightFeePct: bithumbFeePct,
+      leftLabel: "Upbit Spot",
+      rightLabel: "Bithumb Spot",
+    });
+  }, [upbitSpotTickers, bithumbSpotTickers, usdtKrwRate, bithumbFeePct, minVolumeUsdt]);
+
   const solanaDexExecutableSymbols = useMemo(() => {
     return new Set(
       solanaDexTickers
@@ -1157,6 +1175,7 @@ export default function Home() {
   const topUpbitBinance = upbitBinanceOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topUpbitBybit = upbitBybitOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topUpbitGateIo = upbitGateIoOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
+  const topUpbitBithumb = upbitBithumbOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topBithumbSolanaDex = bithumbSolanaDexOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topAnyCrossExchange = useMemo(() => {
     return [...bithumbOkxOpportunities, ...bithumbBinanceOpportunities, ...bithumbBybitOpportunities, ...bithumbGateIoOpportunities]
@@ -2585,6 +2604,27 @@ export default function Home() {
             <div className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">국내 기준 2</div>
             <div className="mt-1 text-lg font-semibold text-white">업비트 KRW 기준 비교</div>
             <div className="mt-1 text-sm text-slate-400">업비트는 공개 가격과 호가는 반영하고, 전송 상태는 공개 API 한계로 안내 배지로 표시합니다.</div>
+          </div>
+
+          <div id="upbit-bithumb" className="scroll-mt-28">
+          <OpportunitySection
+            title="Upbit KRW vs Bithumb KRW"
+            description="국내 원화 거래소끼리 직접 가격 차이를 비교합니다. 같은 KRW 마켓 기준이라 환산 없이 바로 차액을 볼 수 있고, 실제 전송 상태는 업비트 공개 API 한계로 참고용으로 해석합니다."
+            opportunities={topUpbitBithumb}
+            loading={loading}
+            marketMode="cross"
+            leftMarketLabel="KRW Price"
+            rightMarketLabel="KRW Price"
+            initialCollapsed
+            workflowPromotionDisabledReason="상태 미확인"
+            transferStatusConfig={{
+              leftExchangeLabel: "업비트",
+              leftStatuses: {},
+              leftNotice: "업비트 공개 전송 상태 미지원",
+              rightExchangeLabel: "빗썸",
+              rightStatuses: bithumbTransferStatus,
+            }}
+          />
           </div>
 
           <div id="upbit-okx" className="scroll-mt-28">
