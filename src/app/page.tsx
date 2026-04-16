@@ -375,6 +375,12 @@ function getTradingViewEmbedUrl(symbol: string, interval = "15") {
   return `https://s.tradingview.com/widgetembed/?${params.toString()}`;
 }
 
+function getTradingViewSpreadExpression(legs: [ChartLeg, ChartLeg]) {
+  const [left, right] = legs;
+  if (!left.tradingViewSymbol || !right.tradingViewSymbol) return null;
+  return `${left.tradingViewSymbol}-${right.tradingViewSymbol}`;
+}
+
 function formatOriginalPrice(value: number, quote: string) {
   const formatted = value >= 1000 ? value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : value.toLocaleString(undefined, { maximumFractionDigits: 6 });
   return `${formatted} ${quote}`;
@@ -3371,6 +3377,7 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
   const gapPath = buildPath((point) => point.gapPct);
   const netPath = buildPath((point) => point.estimatedNetPct);
   const latestPoint = points[points.length - 1] ?? null;
+  const spreadExpression = selection ? getTradingViewSpreadExpression(selection.legs) : null;
 
   return (
     <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
@@ -3418,15 +3425,24 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-white">스프레드 차트</div>
-                <div className="mt-1 text-xs text-slate-400">초록선 = 실행 Gap, 파란선 = 예상 순수익</div>
+                <div className="mt-1 text-xs text-slate-400">TradingView 수식으로 두 거래소 가격 차이를 한 차트에서 보여줍니다.</div>
               </div>
               <div className="text-xs text-slate-500">히스토리 {points.length}개</div>
             </div>
-            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-[260px] w-full rounded-2xl border border-white/10 bg-slate-950/70">
-              <line x1={padding} y1={chartHeight / 2} x2={chartWidth - padding} y2={chartHeight / 2} stroke="rgba(148,163,184,0.25)" strokeDasharray="4 4" />
-              <path d={gapPath} fill="none" stroke="rgb(52 211 153)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-              <path d={netPath} fill="none" stroke="rgb(34 211 238)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-            </svg>
+            {spreadExpression ? (
+              <iframe
+                key={spreadExpression}
+                src={getTradingViewEmbedUrl(spreadExpression)}
+                title={`${selection.symbol}-spread-chart`}
+                className="h-[420px] w-full rounded-2xl border border-white/10 bg-slate-950"
+              />
+            ) : (
+              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-[260px] w-full rounded-2xl border border-white/10 bg-slate-950/70">
+                <line x1={padding} y1={chartHeight / 2} x2={chartWidth - padding} y2={chartHeight / 2} stroke="rgba(148,163,184,0.25)" strokeDasharray="4 4" />
+                <path d={gapPath} fill="none" stroke="rgb(52 211 153)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+                <path d={netPath} fill="none" stroke="rgb(34 211 238)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+              </svg>
+            )}
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
                 <div className="text-[11px] text-slate-500">현재 실행 Gap</div>
@@ -3437,8 +3453,8 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
                 <div className="mt-1 font-mono text-sm text-cyan-300">{latestPoint ? formatPct(latestPoint.estimatedNetPct) : "-"}</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-                <div className="text-[11px] text-slate-500">추적 구간</div>
-                <div className="mt-1 font-mono text-sm text-slate-200">최근 {points.length}틱</div>
+                <div className="text-[11px] text-slate-500">스프레드 식</div>
+                <div className="mt-1 truncate font-mono text-sm text-slate-200">{spreadExpression ?? `최근 ${points.length}틱 fallback`}</div>
               </div>
             </div>
           </div>
