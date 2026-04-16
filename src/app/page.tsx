@@ -1218,6 +1218,7 @@ export default function Home() {
     const executableBithumbGateIo = topBithumbGateIo
       .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, gateIoTransferStatus))
       .slice(0, 2);
+    const upbitBithumbPreview = topUpbitBithumb.slice(0, 2);
 
     return [
       {
@@ -1253,6 +1254,17 @@ export default function Home() {
         detailAnchor: "bithumb-gateio",
         detailTitle: "Bithumb KRW vs Gate.io Spot",
       },
+      {
+        id: "domestic",
+        title: "Upbit vs Bithumb",
+        description: "국내 원화 거래소끼리 직접 차액을 빠르게 보는 보드",
+        opportunities: upbitBithumbPreview,
+        accentClassName: "from-violet-300/20 to-transparent",
+        badgeLabel: upbitBithumbPreview.length > 0 ? `후보 ${topUpbitBithumb.length}` : "후보 없음",
+        badgeTone: "slate",
+        detailAnchor: "upbit-bithumb",
+        detailTitle: "Upbit KRW vs Bithumb KRW",
+      },
     ];
   }, [
     bithumbTransferStatus,
@@ -1264,6 +1276,7 @@ export default function Home() {
     topBithumbBinance,
     topBithumbGateIo,
     topCrossExchange,
+    topUpbitBithumb,
   ]);
 
   useEffect(() => {
