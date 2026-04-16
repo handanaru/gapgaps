@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { hasVerifiedAssetIdentity } from "@/lib/asset-identity";
+import { isBlockedExchangePairSymbolByLabel } from "@/lib/asset-identity-registry";
 import { getDexExecutionStatus } from "@/lib/dex-execution";
 import { getDexTokenBySymbol } from "@/lib/dex-tokens";
 import { calculateArbitrage, calculateCrossExchangeArbitrage } from "@/lib/exchanges";
@@ -1178,10 +1179,22 @@ export default function Home() {
   const topOkx = okxInternalOpportunities.slice(0, 15);
   const topPerpPerp = binanceOkxPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
   const topPerpPerpBybit = binanceBybitPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
-  const topPerpPerpGateIo = binanceGateIoPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
-  const topOkxBybitPerp = okxBybitPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
-  const topOkxGateIoPerp = okxGateIoPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
-  const topBybitGateIoPerp = bybitGateIoPerpOpportunities.filter((item) => Math.abs(item.gapPct) >= minSpreadFilter).slice(0, 15);
+  const topPerpPerpGateIo = binanceGateIoPerpOpportunities
+    .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
+    .filter((item) => !isBlockedExchangePairSymbolByLabel(item.buyExchange, item.sellExchange, item.symbol))
+    .slice(0, 15);
+  const topOkxBybitPerp = okxBybitPerpOpportunities
+    .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
+    .filter((item) => !isBlockedExchangePairSymbolByLabel(item.buyExchange, item.sellExchange, item.symbol))
+    .slice(0, 15);
+  const topOkxGateIoPerp = okxGateIoPerpOpportunities
+    .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
+    .filter((item) => !isBlockedExchangePairSymbolByLabel(item.buyExchange, item.sellExchange, item.symbol))
+    .slice(0, 15);
+  const topBybitGateIoPerp = bybitGateIoPerpOpportunities
+    .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
+    .filter((item) => !isBlockedExchangePairSymbolByLabel(item.buyExchange, item.sellExchange, item.symbol))
+    .slice(0, 15);
   const topCrossExchange = bithumbOkxOpportunities
     .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
     .filter((item) => isTransferReadyForOpportunity(item, bithumbTransferStatus))

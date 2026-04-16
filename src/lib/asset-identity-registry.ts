@@ -39,6 +39,15 @@ export function isBlockedCrossExchangeSymbol(leftExchange: string, rightExchange
   return BLOCKED_CROSS_EXCHANGE_PAIRS[getPairKey(leftExchange, rightExchange)]?.has(base) ?? false;
 }
 
+export function isBlockedExchangePairSymbolByLabel(leftExchangeLabel: string, rightExchangeLabel: string, symbol: string) {
+  const normalizeExchange = (value: string) =>
+    value
+      .replace(/ Spot| Perp| Swap| Futures/g, "")
+      .trim();
+  const base = symbol.replace('/KRW', '').replace('USDT', '');
+  return isBlockedCrossExchangeSymbol(normalizeExchange(leftExchangeLabel), normalizeExchange(rightExchangeLabel), base);
+}
+
 export function getAssetIdentityKey(exchange: string, base: string) {
   return EXCHANGE_ASSET_ID_OVERRIDES[exchange]?.[base] ?? `${base.toLowerCase()}:default`;
 }
