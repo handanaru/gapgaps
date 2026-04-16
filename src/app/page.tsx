@@ -1192,13 +1192,13 @@ export default function Home() {
   const opportunityPreviewConfigs = useMemo<OpportunityPreviewConfig[]>(() => {
     const executableBithumbBinance = topBithumbBinance
       .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, binanceTransferStatus))
-      .slice(0, 3);
+      .slice(0, 2);
     const executableBithumbOkx = topCrossExchange
       .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus))
-      .slice(0, 3);
+      .slice(0, 2);
     const executableBithumbGateIo = topBithumbGateIo
       .filter((opportunity) => isTransferReadyForOpportunity(opportunity, bithumbTransferStatus, gateIoTransferStatus))
-      .slice(0, 3);
+      .slice(0, 2);
 
     return [
       {
@@ -3205,12 +3205,12 @@ function OpportunityPreviewPanel({ config, onOpenDetail }: { config: Opportunity
               type="button"
               key={`${config.id}-${opportunity.symbol}-${opportunity.buyExchange}-${opportunity.sellExchange}`}
               onClick={() => onOpenDetail(opportunity)}
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-3 text-left transition hover:border-cyan-300/30 hover:bg-slate-900 sm:px-4 sm:py-4"
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-3 text-left transition hover:border-cyan-300/30 hover:bg-slate-900"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-white sm:text-[15px]">{opportunity.symbol}</div>
-                  <div className="mt-1 text-[11px] text-slate-400 sm:text-xs">
+                  <div className="text-sm font-semibold text-white">{opportunity.symbol}</div>
+                  <div className="mt-1 text-[11px] text-slate-400">
                     {opportunity.buyExchange} {"->"} {opportunity.sellExchange}
                   </div>
                 </div>
@@ -3218,19 +3218,10 @@ function OpportunityPreviewPanel({ config, onOpenDetail }: { config: Opportunity
                   {formatPct(opportunity.estimatedNetPct)}
                 </div>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2">
-                  <div className="text-[11px] text-slate-500">매수</div>
-                  <div className="mt-1 font-mono text-xs text-slate-200">{formatPrice(opportunity.buyPrice)}</div>
-                </div>
-                <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2">
-                  <div className="text-[11px] text-slate-500">매도</div>
-                  <div className="mt-1 font-mono text-xs text-slate-200">{formatPrice(opportunity.sellPrice)}</div>
-                </div>
-                <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2">
-                  <div className="text-[11px] text-slate-500">Gap</div>
-                  <div className="mt-1 font-mono text-xs text-slate-200">{formatPct(opportunity.gapPct)}</div>
-                </div>
+              <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-400">
+                <span>매수 {formatPrice(opportunity.buyPrice)}</span>
+                <span>매도 {formatPrice(opportunity.sellPrice)}</span>
+                <span>Gap {formatPct(opportunity.gapPct)}</span>
               </div>
             </button>
           ))
