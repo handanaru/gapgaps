@@ -1740,62 +1740,22 @@ export default function Home() {
           </div>
         </nav>
 
-        <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-          <div className="rounded-[32px] border border-cyan-400/15 bg-gradient-to-br from-cyan-400/12 via-slate-950 to-slate-950 p-6">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Action Center</p>
-                <h2 className="mt-2 text-xl font-semibold text-white">지금 바로 확인할 후보</h2>
-                <p className="mt-2 max-w-2xl text-sm text-slate-300">
-                  빗썸과 업비트 두 국내 거래소 축에서 가장 눈에 띄는 해외 비교 후보를 먼저 보여줍니다. 아래 카드에서 바로 상세 구역으로 이동해 확인할 수 있습니다.
-                </p>
-              </div>
-              <a href="#cex-cex" className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20">
-                상세 비교로 이동
-              </a>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-              <HeroMetricCard
-                label="Best Cross-Exchange"
-                value={topAnyCrossExchange[0] ? formatPct(topAnyCrossExchange[0].estimatedNetPct) : loading ? "..." : "0.000%"}
-                hint={
-                  topAnyCrossExchange[0]
-                    ? `${topAnyCrossExchange[0].symbol} · ${topAnyCrossExchange[0].buyExchange} -> ${topAnyCrossExchange[0].sellExchange}`
-                    : "크로스 거래소 최고 후보"
-                }
-                tone="cyan"
-              />
-              <HeroMetricCard
-                label="Executable Routes"
-                value={executableCrossExchangeCount.toLocaleString()}
-                hint="현재 전송 상태 기준으로 바로 검토 가능한 후보 수"
-                tone="emerald"
-              />
-              <HeroMetricCard
-                label="Workflow Candidate"
-                value={workflowCandidate ? workflowCandidate.symbol : loading ? "..." : "-"}
-                hint={workflowCandidate ? `${workflowCandidate.routeLabel} · ${formatPct(workflowCandidate.estimatedNetPct)}` : "자동 승인 후보 없음"}
-                tone="amber"
-              />
-              <HeroMetricCard
-                label="Monitored Venues"
-                value="6"
-                hint="Bithumb, Binance, OKX, Bybit, Gate.io, Solana DEX"
-                tone="slate"
-              />
-            </div>
-          </div>
-
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.04] p-6">
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Market Pulse</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <SummaryCard label="국내 KRW" value={`${bithumbSpotTickers.length.toLocaleString()} / ${upbitSpotTickers.length.toLocaleString()}`} hint="Bithumb / Upbit" />
-              <SummaryCard label="해외 Spot" value={`${binanceSpotTickers.length.toLocaleString()} / ${okxSpotTickers.length.toLocaleString()}`} hint="Binance / OKX" />
-              <SummaryCard label="대체 해외" value={`${bybitSpotTickers.length.toLocaleString()} / ${gateIoSpotTickers.length.toLocaleString()}`} hint="Bybit / Gate.io" />
-              <SummaryCard label="DEX 후보" value={solanaDexTickers.length.toLocaleString()} hint="Solana DEX" />
-            </div>
-          </div>
+        <section className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
+          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-cyan-100">
+            업데이트 {lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : "..."}
+          </span>
+          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1">
+            USDT/KRW {usdtKrwRate ? formatPrice(usdtKrwRate) : "-"}
+          </span>
+          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1">
+            실행 가능 {executableCrossExchangeCount.toLocaleString()}
+          </span>
+          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1">
+            DEX 후보 {solanaDexTickers.length.toLocaleString()}
+          </span>
+          <a href="#cex-cex" className="ml-auto rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-cyan-100 transition hover:bg-cyan-400/20">
+            상세 비교로 이동
+          </a>
         </section>
 
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -3219,35 +3179,6 @@ function TransferStatusBadge({ enabled, label }: { enabled: boolean | null; labe
 
 function TransferNoticeBadge({ text }: { text: string }) {
   return <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-2 py-1 text-[11px] text-amber-100">{text}</span>;
-}
-
-function HeroMetricCard({
-  label,
-  value,
-  hint,
-  tone,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  tone: "cyan" | "emerald" | "amber" | "slate";
-}) {
-  const toneClassName =
-    tone === "cyan"
-      ? "border-cyan-300/20 bg-cyan-400/10"
-      : tone === "emerald"
-        ? "border-emerald-300/20 bg-emerald-400/10"
-        : tone === "amber"
-          ? "border-amber-300/20 bg-amber-400/10"
-          : "border-white/10 bg-white/[0.04]";
-
-  return (
-    <div className={`rounded-3xl border p-4 sm:p-5 ${toneClassName}`}>
-      <p className="text-xs sm:text-sm text-slate-300">{label}</p>
-      <div className="mt-3 text-xl font-semibold tracking-tight text-white sm:text-2xl">{value}</div>
-      <p className="mt-2 text-xs text-slate-400">{hint}</p>
-    </div>
-  );
 }
 
 function OpportunityPreviewPanel({ config, onOpenDetail }: { config: OpportunityPreviewConfig; onOpenDetail: (opportunity: ArbitrageOpportunity) => void }) {
