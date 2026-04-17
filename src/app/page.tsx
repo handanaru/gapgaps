@@ -1570,6 +1570,25 @@ export default function Home() {
       .slice(0, 12);
   }, [aggregatedOpportunityRows, bithumbTransferStatus]);
 
+
+  const recommendedActionRow = useMemo(() => {
+    return quickScanRows[0] ?? null;
+  }, [quickScanRows]);
+
+  const totalTrackedAssets = useMemo(() => {
+    return new Set(aggregatedOpportunityRows.map((row) => row.opportunity.symbol)).size;
+  }, [aggregatedOpportunityRows]);
+
+  const currentYieldValue = recommendedActionRow?.opportunity.estimatedNetPct ?? 0;
+  const currentRiskLabel =
+    !recommendedActionRow
+      ? "대기"
+      : currentYieldValue >= 8
+        ? "높음"
+        : currentYieldValue >= 4
+          ? "중간"
+          : "낮음";
+
   const filteredOpportunityRows = useMemo(() => {
     return aggregatedOpportunityRows.filter((row) => {
       if (opportunityFilterKind !== "all" && row.kind !== opportunityFilterKind) {
@@ -1796,6 +1815,138 @@ export default function Home() {
           <a href="#cex-cex" className="ml-auto rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-cyan-100 transition hover:bg-cyan-400/20">
             상세 비교로 이동
           </a>
+        </section>
+
+        <section className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-cyan-950/10">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_280px]">
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/60 p-5">
+              <div className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">오늘의 추천 행동</div>
+              {recommendedActionRow ? (
+                <>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">{recommendedActionRow.sourceTitle}</span>
+                    <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-100">실행 가능</span>
+                  </div>
+                  <div className="mt-4 text-3xl font-semibold tracking-tight text-white lg:text-4xl">
+                    {recommendedActionRow.opportunity.symbol} {formatPct(recommendedActionRow.opportunity.estimatedNetPct)}
+                  </div>
+                  <div className="mt-2 text-sm text-slate-300">
+                    {recommendedActionRow.opportunity.buyExchange} → {recommendedActionRow.opportunity.sellExchange}
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                      <div className="text-[11px] text-slate-500">매수 가격</div>
+                      <div className="mt-1 font-mono text-base text-white">{formatPrice(recommendedActionRow.opportunity.buyPrice)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                      <div className="text-[11px] text-slate-500">매도 가격</div>
+                      <div className="mt-1 font-mono text-base text-white">{formatPrice(recommendedActionRow.opportunity.sellPrice)}</div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-6 text-sm text-slate-500">
+                  현재 추천할 실행 가능 후보가 없습니다.
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!recommendedActionRow) return;
+                  setSelectedChart(getChartSelection(recommendedActionRow.sourceTitle, recommendedActionRow.opportunity));
+                  document.getElementById(recommendedActionRow.kind === "basis" ? "basis" : recommendedActionRow.kind === "cex-dex" ? "cex-dex" : recommendedActionRow.kind === "cex-cex" ? "cex-cex" : "perp-perp")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="rounded-[28px] bg-cyan-400 px-6 py-5 text-lg font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={!recommendedActionRow}
+              >
+                거래 시작하기
+              </button>
+
+              <div className="grid gap-3">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
+                  <div className="text-[11px] text-slate-500">총 자산</div>
+                  <div className="mt-1 font-mono text-xl text-white">{totalTrackedAssets.toLocaleString()}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
+                  <div className="text-[11px] text-slate-500">현재 수익률</div>
+                  <div className="mt-1 font-mono text-xl text-emerald-300">{formatPct(currentYieldValue)}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
+                  <div className="text-[11px] text-slate-500">위험도</div>
+                  <div className={`mt-1 text-xl font-semibold ${currentRiskLabel === "높음" ? "text-rose-300" : currentRiskLabel === "중간" ? "text-amber-300" : "text-cyan-300"}`}>{currentRiskLabel}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-cyan-950/10">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_280px]">
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/60 p-5">
+              <div className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">오늘의 추천 행동</div>
+              {recommendedActionRow ? (
+                <>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">{recommendedActionRow.sourceTitle}</span>
+                    <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-100">실행 가능</span>
+                  </div>
+                  <div className="mt-4 text-3xl font-semibold tracking-tight text-white lg:text-4xl">
+                    {recommendedActionRow.opportunity.symbol} {formatPct(recommendedActionRow.opportunity.estimatedNetPct)}
+                  </div>
+                  <div className="mt-2 text-sm text-slate-300">
+                    {recommendedActionRow.opportunity.buyExchange} → {recommendedActionRow.opportunity.sellExchange}
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                      <div className="text-[11px] text-slate-500">매수 가격</div>
+                      <div className="mt-1 font-mono text-base text-white">{formatPrice(recommendedActionRow.opportunity.buyPrice)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                      <div className="text-[11px] text-slate-500">매도 가격</div>
+                      <div className="mt-1 font-mono text-base text-white">{formatPrice(recommendedActionRow.opportunity.sellPrice)}</div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-6 text-sm text-slate-500">
+                  현재 추천할 실행 가능 후보가 없습니다.
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!recommendedActionRow) return;
+                  setSelectedChart(getChartSelection(recommendedActionRow.sourceTitle, recommendedActionRow.opportunity));
+                  document.getElementById(recommendedActionRow.kind === "basis" ? "basis" : recommendedActionRow.kind === "cex-dex" ? "cex-dex" : recommendedActionRow.kind === "cex-cex" ? "cex-cex" : "perp-perp")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="rounded-[28px] bg-cyan-400 px-6 py-5 text-lg font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={!recommendedActionRow}
+              >
+                거래 시작하기
+              </button>
+
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
+                  <div className="text-[11px] text-slate-500">총 자산</div>
+                  <div className="mt-1 font-mono text-xl text-white">{totalTrackedAssets.toLocaleString()}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
+                  <div className="text-[11px] text-slate-500">현재 수익률</div>
+                  <div className="mt-1 font-mono text-xl text-emerald-300">{formatPct(currentYieldValue)}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
+                  <div className="text-[11px] text-slate-500">위험도</div>
+                  <div className={`mt-1 text-xl font-semibold ${currentRiskLabel === "높음" ? "text-rose-300" : currentRiskLabel === "중간" ? "text-amber-300" : "text-cyan-300"}`}>{currentRiskLabel}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
