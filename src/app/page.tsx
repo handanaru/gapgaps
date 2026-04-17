@@ -1559,7 +1559,7 @@ export default function Home() {
         }
 
         if (row.sourceTitle === "Upbit KRW vs Bithumb KRW") {
-          return isTransferReadyForOpportunity(row.opportunity, bithumbTransferStatus);
+          return Boolean(bithumbTransferStatus[symbol]?.depositEnabled && bithumbTransferStatus[symbol]?.withdrawEnabled);
         }
 
         return (
