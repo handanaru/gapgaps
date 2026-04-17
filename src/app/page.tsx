@@ -3399,14 +3399,24 @@ function SummaryCard({ label, value, hint }: { label: string; value: string; hin
   );
 }
 
+function getExchangeAccentColor(exchange: string) {
+  if (exchange.includes("Upbit")) return "#60a5fa";
+  if (exchange.includes("Binance")) return "#34d399";
+  if (exchange.includes("Bithumb")) return "#f59e0b";
+  if (exchange.includes("OKX")) return "#a78bfa";
+  if (exchange.includes("Bybit")) return "#f472b6";
+  if (exchange.includes("Gate.io")) return "#22d3ee";
+  return "#94a3b8";
+}
+
 function OpportunityChartPanel({ selection, history, onClear }: { selection: ChartSelection | null; history: SpreadHistoryPoint[]; onClear: () => void }) {
   const [timeframe, setTimeframe] = useState<"1m" | "3m" | "5m" | "15m" | "1h">("5m");
-  const timeframeOptions: Array<{ key: "1m" | "3m" | "5m" | "15m" | "1h"; label: string; points: number }> = [
-    { key: "1m", label: "1분", points: 20 },
-    { key: "3m", label: "3분", points: 40 },
-    { key: "5m", label: "5분", points: 60 },
-    { key: "15m", label: "15분", points: 90 },
-    { key: "1h", label: "1시간", points: 120 },
+  const timeframeOptions: Array<{ key: "1m" | "3m" | "5m" | "15m" | "1h"; label: string; points: number; interval: string }> = [
+    { key: "1m", label: "1분", points: 20, interval: "1" },
+    { key: "3m", label: "3분", points: 40, interval: "3" },
+    { key: "5m", label: "5분", points: 60, interval: "5" },
+    { key: "15m", label: "15분", points: 90, interval: "15" },
+    { key: "1h", label: "1시간", points: 120, interval: "60" },
   ];
   const selectedWindow = timeframeOptions.find((option) => option.key === timeframe) ?? timeframeOptions[2];
   const fallbackPoint = selection ? [{ timestamp: Date.now(), gapPct: selection.gapPct, estimatedNetPct: selection.estimatedNetPct }] : [];
@@ -3416,44 +3426,23 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
   const latestPoint = visibleHistory[visibleHistory.length - 1] ?? null;
   const latestGap = latestPoint?.gapPct ?? selection?.gapPct ?? 0;
   const latestNet = latestPoint?.estimatedNetPct ?? selection?.estimatedNetPct ?? 0;
-  const targetGap = 2;
+  const targetGap = 5.5;
 
-  const createSeriesPath = (values: number[], width: number, height: number, paddingX: number, paddingY: number) => {
-    if (!values.length) return "";
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
-    return values
-      .map((value, index) => {
-        const x = paddingX + (index / Math.max(values.length - 1, 1)) * (width - paddingX * 2);
-        const y = height - paddingY - ((value - min) / range) * (height - paddingY * 2);
-        return `${index === 0 ? "M" : "L"}${x},${y}`;
-      })
-      .join(" ");
-  };
-
-  const renderMiniChart = (values: number[], color: string, targetValue?: number, formatter?: (value: number) => string) => {
-    const width = 960;
-    const height = 220;
+  const renderGapChart = (values: number[]) => {
+    const width = 720;
+    const height = 260;
     const paddingX = 24;
     const paddingY = 20;
-    const min = Math.min(...values, targetValue ?? values[0] ?? 0);
-    const max = Math.max(...values, targetValue ?? values[0] ?? 0);
+    const min = Math.min(...values, targetGap, 0);
+    const max = Math.max(...values, targetGap, 0);
     const range = max - min || 1;
-    const path = createSeriesPath(values, width, height, paddingX, paddingY);
-    const targetY =
-      targetValue === undefined
-        ? null
-        : height - paddingY - ((targetValue - min) / range) * (height - paddingY * 2);
+    const toX = (index: number) => paddingX + (index / Math.max(values.length - 1, 1)) * (width - paddingX * 2);
+    const toY = (value: number) => height - paddingY - ((value - min) / range) * (height - paddingY * 2);
+    const path = values.map((value, index) => `${index === 0 ? "M" : "L"}${toX(index)},${toY(value)}`).join(" ");
+    const targetY = toY(targetGap);
 
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-[220px] w-full rounded-3xl border border-white/10 bg-[#111827]">
-        <defs>
-          <linearGradient id={`fill-${color.replace(/[^a-z0-9]/gi, '')}`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
+      <svg viewBox={`0 0 ${width} ${height}`} className={`h-[260px] w-full rounded-3xl border border-white/10 ${latestGap >= targetGap ? "bg-emerald-400/8" : "bg-white/[0.02]"}`}>
         {[0.2, 0.5, 0.8].map((ratio) => (
           <line
             key={ratio}
@@ -3465,20 +3454,11 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
             strokeDasharray="3 6"
           />
         ))}
-        {targetY !== null ? (
-          <line x1={paddingX} x2={width - paddingX} y1={targetY} y2={targetY} stroke="rgba(244,114,182,0.9)" strokeDasharray="8 6" />
-        ) : null}
-        <path d={path} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-        {values.map((value, index) => {
-          const x = paddingX + (index / Math.max(values.length - 1, 1)) * (width - paddingX * 2);
-          const y = height - paddingY - ((value - min) / range) * (height - paddingY * 2);
-          return <circle key={`${index}-${value}`} cx={x} cy={y} r="2.5" fill={color} opacity={index === values.length - 1 ? 1 : 0.25} />;
-        })}
-        {formatter ? (
-          <text x={width - paddingX} y={22} textAnchor="end" fill="rgba(226,232,240,0.85)" fontSize="14">
-            {formatter(values[values.length - 1] ?? 0)}
-          </text>
-        ) : null}
+        <line x1={paddingX} x2={width - paddingX} y1={targetY} y2={targetY} stroke="rgba(244,114,182,0.9)" strokeDasharray="8 6" />
+        <path d={path} fill="none" stroke="#34d399" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        {values.map((value, index) => (
+          <circle key={`${index}-${value}`} cx={toX(index)} cy={toY(value)} r="2.5" fill="#34d399" opacity={index === values.length - 1 ? 1 : 0.25} />
+        ))}
       </svg>
     );
   };
@@ -3488,9 +3468,9 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
       <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Chart View</p>
-            <h2 className="mt-2 text-lg font-semibold text-white">Price / Gap Chart</h2>
-            <p className="mt-1 text-sm text-slate-400">표에서 원하는 후보를 누르면 레퍼런스 스타일 차트 UI로 가격과 갭을 같이 보여줍니다.</p>
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">통합 진단 차트</p>
+            <h2 className="mt-2 text-lg font-semibold text-white">Price / Gap 진단</h2>
+            <p className="mt-1 text-sm text-slate-400">표에서 원하는 후보를 누르면 가격과 갭 진단 차트를 함께 보여줍니다.</p>
           </div>
         </div>
         <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-8 text-sm text-slate-500">
@@ -3500,40 +3480,37 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
     );
   }
 
-  const legLabels = `${selection.legs[0].exchange} / ${selection.legs[1].exchange}`;
-  const syntheticPriceValues = visibleHistory.map((point, index) => 100 + point.gapPct * 8 + index * 0.12);
+  const leftColor = getExchangeAccentColor(selection.legs[0].exchange);
+  const rightColor = getExchangeAccentColor(selection.legs[1].exchange);
   const gapValues = visibleHistory.map((point) => point.gapPct);
 
   return (
-    <section className="rounded-[28px] border border-white/10 bg-[#0b1220] p-5 shadow-2xl shadow-slate-950/30">
+    <section className="rounded-[30px] border border-white/10 bg-[#0a1020] p-6 shadow-2xl shadow-slate-950/30">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Chart View</p>
-          <h2 className="mt-2 text-lg font-semibold text-white">{selection.symbol} · Price / Gap Chart</h2>
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">통합 진단 차트</p>
+          <h2 className="mt-2 text-lg font-semibold text-white">{selection.symbol} · Price / Gap 진단</h2>
           <p className="mt-1 text-sm text-slate-400">{selection.title} · {selection.routeLabel}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-300">{legLabels}</div>
-          <button
-            type="button"
-            onClick={onClear}
-            className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800"
-          >
-            차트 닫기
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onClear}
+          className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800"
+        >
+          차트 닫기
+        </button>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-5 flex flex-wrap gap-2">
         {timeframeOptions.map((option) => (
           <button
             key={option.key}
             type="button"
             onClick={() => setTimeframe(option.key)}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+            className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
               timeframe === option.key
-                ? "bg-cyan-400 text-slate-950"
-                : "border border-white/10 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
+                ? "bg-white text-slate-950"
+                : "border border-white/10 bg-[#111827] text-slate-300 hover:bg-slate-800"
             }`}
           >
             {option.label}
@@ -3541,43 +3518,44 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
         ))}
       </div>
 
-      <div className="mt-5 space-y-5">
-        <div className="rounded-[24px] border border-white/10 bg-[#111827] p-4">
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <div className="rounded-[26px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <div className="text-base font-semibold text-white">Price Chart</div>
-              <div className="mt-1 text-xs text-slate-400">거래소 페어 기준 상대 가격 흐름</div>
+              <div className="text-lg font-semibold text-white">Price Chart</div>
+              <div className="mt-1 text-[11px] text-slate-400">거래소별 가격 차이 진단</div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-cyan-400 px-3 py-1 text-xs font-semibold text-slate-950">{selection.legs[0].exchange}</span>
-              <span className="rounded-full bg-emerald-400 px-3 py-1 text-xs font-semibold text-slate-950">{selection.legs[1].exchange}</span>
-              <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs text-slate-200">{syntheticPriceValues.length ? syntheticPriceValues[syntheticPriceValues.length - 1].toFixed(2) : '-'}</span>
+              <span className="rounded-full px-3 py-1 text-[11px] font-semibold text-slate-950" style={{ backgroundColor: leftColor }}>{selection.legs[0].exchange}</span>
+              <span className="rounded-full px-3 py-1 text-[11px] font-semibold text-slate-950" style={{ backgroundColor: rightColor }}>{selection.legs[1].exchange}</span>
             </div>
           </div>
           {spreadExpression ? (
             <iframe
-              key={`${spreadExpression}-${timeframe}`}
-              src={getTradingViewEmbedUrl(spreadExpression, timeframe === '1h' ? '60' : timeframe.replace('m', ''))}
+              key={`${spreadExpression}-${selectedWindow.interval}`}
+              src={getTradingViewEmbedUrl(spreadExpression, selectedWindow.interval)}
               title={`${selection.symbol}-spread-chart`}
-              className="h-[360px] w-full rounded-3xl border border-white/10 bg-slate-950"
+              className="h-[320px] w-full rounded-3xl border border-white/10 bg-slate-950/60"
             />
           ) : (
-            renderMiniChart(syntheticPriceValues, '#22d3ee', undefined, (value) => value.toFixed(2))
+            <div className="flex h-[320px] items-center justify-center rounded-3xl border border-dashed border-white/10 bg-slate-950/40 text-sm text-slate-500">
+              TradingView 스프레드 식이 없는 조합입니다.
+            </div>
           )}
         </div>
 
-        <div className="rounded-[24px] border border-white/10 bg-[#111827] p-4">
+        <div className="rounded-[26px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <div className="text-lg font-semibold text-white">Gap % Chart</div>
-              <div className="mt-1 text-[11px] text-slate-400">실행 Gap 추이와 목표 임계값</div>
+              <div className="text-lg font-semibold text-white">Gap Chart</div>
+              <div className="mt-1 text-[11px] text-slate-400">Target 도달 여부와 현재 갭</div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="rounded-full border border-pink-300/30 bg-pink-400/10 px-3 py-1 text-xs text-pink-100">Target {formatPct(targetGap)}</span>
-              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${latestGap >= targetGap ? 'bg-emerald-400 text-slate-950' : 'bg-amber-300 text-slate-950'}`}>{formatPct(latestGap)}</span>
+              <span className="rounded-full border border-pink-300/30 bg-pink-400/10 px-3 py-1 text-[11px] text-pink-100">Target {formatPct(targetGap)}</span>
+              <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${latestGap >= targetGap ? 'bg-emerald-400 text-slate-950' : 'bg-amber-300 text-slate-950'}`}>{formatPct(latestGap)}</span>
             </div>
           </div>
-          {renderMiniChart(gapValues, '#34d399', targetGap, (value) => formatPct(value))}
+          {renderGapChart(gapValues)}
           <div className="mt-3 grid gap-3 md:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
               <div className="text-[11px] text-slate-500">현재 실행 Gap</div>
@@ -3588,39 +3566,11 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
               <div className="mt-1 font-mono text-sm text-cyan-300">{formatPct(latestNet)}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-              <div className="text-[11px] text-slate-500">스프레드 식</div>
-              <div className="mt-1 truncate font-mono text-sm text-slate-200">{spreadExpression ?? `${selection.legs[0].exchange}-${selection.legs[1].exchange}`}</div>
+              <div className="text-[11px] text-slate-500">상태</div>
+              <div className={`mt-1 text-sm font-semibold ${latestGap >= targetGap ? 'text-emerald-300' : 'text-slate-300'}`}>{latestGap >= targetGap ? 'Target 도달' : 'Target 미도달'}</div>
             </div>
           </div>
         </div>
-
-        <details className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
-          <summary className="cursor-pointer text-sm font-medium text-slate-200">개별 거래소 차트 보기</summary>
-          <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            {selection.legs.map((leg) => (
-              <div key={`${selection.symbol}-${leg.label}-${leg.exchange}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-white">{leg.label}</div>
-                    <div className="mt-1 text-xs text-slate-400">{leg.exchange}</div>
-                  </div>
-                </div>
-                {leg.tradingViewSymbol ? (
-                  <iframe
-                    key={leg.tradingViewSymbol}
-                    src={getTradingViewEmbedUrl(leg.tradingViewSymbol, timeframe === '1h' ? '60' : timeframe.replace('m', ''))}
-                    title={`${selection.symbol}-${leg.exchange}-chart`}
-                    className="h-[280px] w-full rounded-2xl border border-white/10 bg-slate-950"
-                  />
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-10 text-sm text-slate-500">
-                    이 거래소 조합은 TradingView 심볼 매핑이 없어 차트를 바로 띄우지 못했습니다.
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </details>
       </div>
     </section>
   );
@@ -3664,374 +3614,39 @@ function WithdrawalWorkflowSection({
   onExecute: () => void;
   onReset: () => void;
 }) {
-  const quantityReady = quantity.trim().length > 0 && Number(quantity) > 0;
-  const canApproveQuantity = step === "detected" && quantityReady;
-  const canApproveAuth = step === "quantity-approved";
-  const canExecute = step === "auth-approved";
+  void networkState;
+  void quantity;
+  void onQuantityChange;
+  void onApproveQuantity;
+  void onApproveAuth;
+  void onExecute;
+  void onReset;
 
   return (
-    <section className="rounded-3xl border border-cyan-400/20 bg-cyan-400/5 p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-cyan-300">Withdrawal Flow</p>
-          <h2 className="mt-2 text-xl font-semibold text-white">단계별 출금 승인</h2>
-          <p className="mt-1 max-w-3xl text-sm text-slate-300">
-            자동 감지 후 바로 출금하지 않고, 수량 확인과 인증 승인을 각각 거친 뒤 마지막에만 출금이 열리도록 구성했습니다. 현재는 실출금 API 대신 승인 흐름을 검증하는 안전한 모드입니다.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-xs text-slate-300">
-          <div>현재 단계</div>
-          <div className="mt-1 text-base font-semibold text-white">{formatStepLabel(step)}</div>
-          <div className="mt-1 text-slate-400">후보 선택: {mode === "auto" ? "자동 감지" : "수동 선택"}</div>
-          <div className="mt-1 text-slate-500">{lastUpdated ? `업데이트 ${new Date(lastUpdated).toLocaleTimeString()}` : "대기 중"}</div>
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Withdrawal Flow</p>
+          <h2 className="mt-2 text-lg font-semibold text-white">출금 승인 흐름</h2>
+          <p className="mt-1 text-sm text-slate-400">현재는 보조 운영 섹션으로 유지합니다. 필요할 때만 펼쳐 사용하세요.</p>
         </div>
         <CollapseButton collapsed={collapsed} onClick={onToggleCollapsed} />
       </div>
-
-      {!collapsed ? <div className="mt-5 grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-        <div className="space-y-4">
-          <ExecutionBoard candidate={candidate} logEntries={logEntries} />
-
-        <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h3 className="text-base font-semibold text-white">감지된 후보</h3>
-              <p className="mt-1 text-sm text-slate-400">자동 감지 후보를 기본으로 쓰되, 아래 표에서 원하는 기회를 직접 선택해서 승인 흐름에 올릴 수 있습니다.</p>
-            </div>
-            <button
-              type="button"
-              onClick={onReset}
-              className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800"
-            >
-              후보 다시 불러오기
-            </button>
+      {!collapsed ? (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+            <div className="text-sm font-semibold text-white">현재 후보</div>
+            <div className="mt-2 text-sm text-slate-300">{candidate ? `${candidate.symbol} · ${candidate.routeLabel}` : '없음'}</div>
+            <div className="mt-1 text-xs text-slate-500">업데이트 {lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : '대기 중'}</div>
           </div>
-
-          {!candidate ? (
-            <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-slate-900/50 px-4 py-6 text-sm text-slate-400">
-              아직 자동 감지된 출금 후보가 없습니다. 호가 기준 크로스 거래소 순수익이 {ALERT_THRESHOLD_PCT.toFixed(1)}% 이상이면 여기로 올라옵니다.
-            </div>
-          ) : (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <WorkflowStat label="심볼" value={candidate.symbol} />
-              <WorkflowStat label="경로" value={candidate.routeLabel} />
-              <WorkflowStat label="매수" value={`${candidate.buyExchange} @ ${formatPrice(candidate.buyPrice)}`} mono />
-              <WorkflowStat label="매도" value={`${candidate.sellExchange} @ ${formatPrice(candidate.sellPrice)}`} mono />
-              <WorkflowStat label="실행 Gap %" value={formatPct(candidate.gapPct)} mono />
-              <WorkflowStat label="예상 순수익" value={formatPct(candidate.estimatedNetPct)} mono highlight />
-            </div>
-          )}
-        </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
-            <h3 className="text-base font-semibold text-white">네트워크 상태</h3>
-            <p className="mt-1 text-sm text-slate-400">DEX 비교를 위해서는 가격뿐 아니라 실제 입출금 가능한 체인 일치 여부가 중요합니다.</p>
-            <div className="mt-4 space-y-3">
-              <NetworkStatusCard label="빗썸" status={networkState?.bithumb} />
-              <NetworkStatusCard label={networkState?.counterpartLabel ?? "상대 거래소"} status={networkState?.counterpartStatus} />
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs text-slate-400">공통 실행 가능 네트워크</div>
-                <div className="mt-2 text-sm text-white">
-                  {networkState?.matchedNetworks.length ? formatNetworkSummary(networkState.matchedNetworks) : "공통 체인 없음 또는 확인 불가"}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
-            <h3 className="text-base font-semibold text-white">승인 단계</h3>
-            <div className="mt-4 space-y-3">
-              <WorkflowStepCard
-                stepNumber="1"
-                title="감지 알림"
-                description="조건을 만족하는 후보가 감지되면 자동으로 1단계가 완료됩니다."
-                status={step !== "idle" ? "done" : "current"}
-              />
-              <WorkflowStepCard
-                stepNumber="2"
-                title="출금 수량 확인"
-                description="실제 출금할 수량을 입력하고 승인을 눌러 다음 단계로 넘깁니다."
-                status={step === "quantity-approved" || step === "auth-approved" || step === "executed" ? "done" : step === "detected" ? "current" : "locked"}
-              >
-                <div className="mt-3 flex gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    step="any"
-                    value={quantity}
-                    onChange={(event) => onQuantityChange(event.target.value)}
-                    placeholder="출금 수량"
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={onApproveQuantity}
-                    disabled={!canApproveQuantity}
-                    className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-medium text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
-                  >
-                    승인
-                  </button>
-                </div>
-              </WorkflowStepCard>
-              <WorkflowStepCard
-                stepNumber="3"
-                title="인증 알림"
-                description="OTP나 추가 인증을 확인한 뒤, 사용자 승인을 눌러야만 출금 실행 버튼이 열립니다."
-                status={step === "auth-approved" || step === "executed" ? "done" : step === "quantity-approved" ? "current" : "locked"}
-              >
-                <button
-                  type="button"
-                  onClick={onApproveAuth}
-                  disabled={!canApproveAuth}
-                  className="mt-3 rounded-xl border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm font-medium text-amber-100 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-slate-900 disabled:text-slate-500"
-                >
-                  인증 확인 후 승인
-                </button>
-              </WorkflowStepCard>
-              <WorkflowStepCard
-                stepNumber="4"
-                title="출금"
-                description="현재는 실제 API 호출 대신 마지막 승인과 기록만 수행합니다. API 키 연결 후 실출금으로 전환할 수 있습니다."
-                status={step === "executed" ? "done" : step === "auth-approved" ? "current" : "locked"}
-              >
-                <button
-                  type="button"
-                  onClick={onExecute}
-                  disabled={!canExecute}
-                  className="mt-3 rounded-xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-100 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-slate-900 disabled:text-slate-500"
-                >
-                  출금 실행 승인
-                </button>
-              </WorkflowStepCard>
-            </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+            <div className="text-sm font-semibold text-white">현재 단계</div>
+            <div className="mt-2 text-sm text-slate-300">{formatStepLabel(step)} · {mode === 'auto' ? '자동 감지' : '수동 선택'}</div>
+            <div className="mt-1 text-xs text-slate-500">로그 {logEntries.length}개</div>
           </div>
         </div>
-      </div> : (
-        <CollapsedSummary
-          items={
-            candidate
-              ? [
-                  {
-                    id: candidate.id,
-                    primary: `${candidate.symbol} · ${candidate.routeLabel}`,
-                    secondary: `순수익 ${formatPct(candidate.estimatedNetPct)} · 단계 ${formatStepLabel(step)}`,
-                    accent: candidate.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300",
-                  },
-                  {
-                    id: `${candidate.id}:gap`,
-                    primary: "실행 Gap / 매수",
-                    secondary: `${formatPct(candidate.gapPct)} · ${formatPrice(candidate.buyPrice)}`,
-                  },
-                  {
-                    id: `${candidate.id}:sell`,
-                    primary: "매도 / 수량",
-                    secondary: `${formatPrice(candidate.sellPrice)} · ${quantity || "수량 미입력"}`,
-                  },
-                ]
-              : []
-          }
-          emptyLabel="감지된 출금 후보가 없습니다."
-        />
-      )}
+      ) : null}
     </section>
   );
 }
 
-function WorkflowStat({ label, value, mono = false, highlight = false }: { label: string; value: string; mono?: boolean; highlight?: boolean }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="text-xs text-slate-400">{label}</div>
-      <div className={`mt-2 text-sm ${mono ? "font-mono tabular-nums" : "font-medium"} ${highlight ? "text-emerald-300" : "text-white"}`}>{value}</div>
-    </div>
-  );
-}
-
-function stepTone(step: WorkflowStep) {
-  switch (step) {
-    case "executed":
-      return "border-emerald-400/20 bg-emerald-400/10 text-emerald-200";
-    case "auth-approved":
-      return "border-cyan-400/20 bg-cyan-400/10 text-cyan-100";
-    case "quantity-approved":
-      return "border-amber-300/20 bg-amber-400/10 text-amber-100";
-    case "detected":
-      return "border-white/10 bg-slate-900/80 text-slate-300";
-    case "idle":
-      return "border-white/10 bg-slate-900/80 text-slate-400";
-  }
-}
-
-function exchangeDot(routeLabel: string) {
-  if (routeLabel.includes("Binance")) return "bg-amber-400";
-  if (routeLabel.includes("OKX")) return "bg-cyan-400";
-  if (routeLabel.includes("Bithumb")) return "bg-rose-400";
-  return "bg-slate-400";
-}
-
-function ExecutionBoard({
-  candidate,
-  logEntries,
-}: {
-  candidate: WorkflowCandidate | null;
-  logEntries: WorkflowLogEntry[];
-}) {
-  const [tab, setTab] = useState<"positions" | "pending" | "history">("pending");
-
-  const latestById = new Map<string, WorkflowLogEntry>();
-  for (const entry of logEntries) {
-    if (!latestById.has(entry.id)) {
-      latestById.set(entry.id, entry);
-    }
-  }
-
-  const positions = Array.from(latestById.values()).filter((entry) => entry.step === "executed");
-  const pending = Array.from(latestById.values()).filter((entry) => entry.step !== "executed");
-  const history = logEntries.slice(0, 12);
-
-  const rows = tab === "positions" ? positions : tab === "pending" ? pending : history;
-
-  return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-      <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-3">
-        <ExecutionTab label={`Positions (${positions.length})`} active={tab === "positions"} onClick={() => setTab("positions")} />
-        <ExecutionTab label={`Pending (${pending.length})`} active={tab === "pending"} onClick={() => setTab("pending")} />
-        <ExecutionTab label={`History (${history.length})`} active={tab === "history"} onClick={() => setTab("history")} />
-      </div>
-
-      {candidate ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">{candidate.symbol}</span>
-          <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs text-slate-300">{candidate.routeLabel}</span>
-          <span className={`rounded-full border px-3 py-1 text-xs ${stepTone(logEntries[0]?.step ?? "idle")}`}>{formatStepLabel(logEntries[0]?.step ?? "idle")}</span>
-        </div>
-      ) : null}
-
-      <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
-        <table className="min-w-full table-fixed text-sm">
-          <thead className="bg-slate-900/70 text-slate-400">
-            <tr>
-              <th className="w-[160px] px-4 py-3 text-left font-medium">EXCH</th>
-              <th className="w-[120px] px-4 py-3 text-left font-medium">TYPE</th>
-              <th className="w-[140px] px-4 py-3 text-left font-medium">SYMBOL</th>
-              <th className="w-[120px] px-4 py-3 text-left font-medium">SIZE</th>
-              <th className="px-4 py-3 text-left font-medium">ROUTE</th>
-              <th className="w-[160px] px-4 py-3 text-left font-medium">STATUS</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5 bg-slate-950/30">
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                  {tab === "positions" ? "체결된 포지션이 없습니다." : tab === "pending" ? "대기 중인 후보가 없습니다." : "기록이 없습니다."}
-                </td>
-              </tr>
-            ) : (
-              rows.map((entry) => (
-                <tr key={`${tab}-${entry.id}-${entry.updatedAt}`} className="hover:bg-white/5">
-                  <td className="px-4 py-3 text-slate-200">
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2.5 w-2.5 rounded-full ${exchangeDot(entry.routeLabel)}`} />
-                      <span>{entry.routeLabel.split(" -> ")[0]}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-100">transfer</span>
-                  </td>
-                  <td className="px-4 py-3 font-medium text-white">{entry.symbol}</td>
-                  <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{entry.quantity || "-"}</td>
-                  <td className="px-4 py-3 text-slate-300">{entry.routeLabel}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full border px-2.5 py-1 text-xs ${stepTone(entry.step)}`}>{formatStepLabel(entry.step)}</span>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function ExecutionTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-sm transition ${
-        active ? "bg-cyan-400/15 text-cyan-100" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function WorkflowStepCard({
-  stepNumber,
-  title,
-  description,
-  status,
-  children,
-}: {
-  stepNumber: string;
-  title: string;
-  description: string;
-  status: "done" | "current" | "locked";
-  children?: ReactNode;
-}) {
-  const tone =
-    status === "done"
-      ? "border-emerald-400/20 bg-emerald-400/10"
-      : status === "current"
-        ? "border-cyan-400/20 bg-cyan-400/10"
-        : "border-white/10 bg-white/5";
-
-  const badgeTone =
-    status === "done"
-      ? "bg-emerald-400 text-slate-950"
-      : status === "current"
-        ? "bg-cyan-400 text-slate-950"
-        : "bg-slate-800 text-slate-400";
-
-  return (
-    <div className={`rounded-2xl border p-4 ${tone}`}>
-      <div className="flex items-start gap-3">
-        <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${badgeTone}`}>{stepNumber}</div>
-        <div className="min-w-0 flex-1">
-          <div className="font-medium text-white">{title}</div>
-          <div className="mt-1 text-sm text-slate-300">{description}</div>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NetworkStatusCard({ label, status }: { label: string; status?: TransferStatus }) {
-  const networks = summarizeExecutableNetworks(status);
-
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="flex items-center gap-2">
-        <div className="text-sm font-medium text-white">{label}</div>
-        <TransferStatusBadge enabled={status?.depositEnabled ?? null} label="입금" />
-        <TransferStatusBadge enabled={status?.withdrawEnabled ?? null} label="출금" />
-      </div>
-      <div className="mt-3 text-xs text-slate-400">네트워크</div>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {networks.length ? (
-          networks.slice(0, 6).map((network) => (
-            <span key={`${label}-${network.networkKey}`} className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs text-slate-200">
-              {network.networkLabel}
-            </span>
-          ))
-        ) : (
-          <span className="text-sm text-slate-500">확인 가능한 네트워크 없음</span>
-        )}
-      </div>
-    </div>
-  );
-}
