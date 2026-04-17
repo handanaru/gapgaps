@@ -165,12 +165,6 @@ const POLL_INTERVAL_MS = 3000;
 const TRANSFER_STATUS_POLL_MS = 300_000;
 const ALERT_THRESHOLD_PCT = 1;
 
-const MIN_VOLUME_OPTIONS = [
-  { label: "제한 없음", value: 0 },
-  { label: "10만 USDT", value: 100_000 },
-  { label: "100만 USDT", value: 1_000_000 },
-  { label: "1000만 USDT", value: 10_000_000 },
-];
 
 const CROSS_EXCHANGE_COLUMNS: Array<{ key: OpportunitySortKey; label: string }> = [
   { key: "symbol", label: "Symbol" },
@@ -684,12 +678,12 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [minSpreadFilter, setMinSpreadFilter] = useState(0.5);
   const [matrixRequireFutures, setMatrixRequireFutures] = useState(true);
-  const [binanceFeePct, setBinanceFeePct] = useState(DEFAULT_BINANCE_TAKER_FEE);
-  const [bithumbFeePct, setBithumbFeePct] = useState(DEFAULT_BITHUMB_TAKER_FEE);
-  const [okxFeePct, setOkxFeePct] = useState(DEFAULT_OKX_TAKER_FEE);
-  const [bybitFeePct, setBybitFeePct] = useState(DEFAULT_BYBIT_TAKER_FEE);
-  const [gateIoFeePct, setGateIoFeePct] = useState(DEFAULT_GATEIO_TAKER_FEE);
-  const [minVolumeUsdt, setMinVolumeUsdt] = useState(0);
+  const [binanceFeePct] = useState(DEFAULT_BINANCE_TAKER_FEE);
+  const [bithumbFeePct] = useState(DEFAULT_BITHUMB_TAKER_FEE);
+  const [okxFeePct] = useState(DEFAULT_OKX_TAKER_FEE);
+  const [bybitFeePct] = useState(DEFAULT_BYBIT_TAKER_FEE);
+  const [gateIoFeePct] = useState(DEFAULT_GATEIO_TAKER_FEE);
+  const [minVolumeUsdt] = useState(0);
   const [countdown, setCountdown] = useState(POLL_INTERVAL_MS / 1000);
   const [matrixSortConfig, setMatrixSortConfig] = useState<SortConfig<MatrixSortKey>>({ key: "spreadPct", direction: "asc" });
   const [matrixOrderLock, setMatrixOrderLock] = useState<string[] | null>(null);
@@ -705,7 +699,6 @@ export default function Home() {
   const [workflowLog, setWorkflowLog] = useState<WorkflowLogEntry[]>([]);
   const [selectedChart, setSelectedChart] = useState<ChartSelection | null>(null);
   const [spreadHistoryByKey, setSpreadHistoryByKey] = useState<Record<string, SpreadHistoryPoint[]>>({});
-  const [settingsCollapsed, setSettingsCollapsed] = useState(true);
   const [alertsCollapsed, setAlertsCollapsed] = useState(true);
   const [workflowCollapsed, setWorkflowCollapsed] = useState(true);
   const [filteredViewCollapsed, setFilteredViewCollapsed] = useState(true);
@@ -1875,98 +1868,45 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
-          <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+        <section className="max-w-sm rounded-3xl border border-white/10 bg-white/5 p-4">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-white">운영 도구 · 수수료 / 필터</h2>
-              <p className="mt-1 text-sm text-slate-400">필요할 때만 펼쳐서 수수료와 거래대금 필터를 조정합니다.</p>
+              <h2 className="text-sm font-semibold text-white">브라우저 알림</h2>
+              <p className="mt-1 text-xs text-slate-400">텔레그램 전 임시 알림용</p>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                className="rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800"
-                onClick={() => {
-                  setBinanceFeePct(DEFAULT_BINANCE_TAKER_FEE);
-                  setBithumbFeePct(DEFAULT_BITHUMB_TAKER_FEE);
-                  setOkxFeePct(DEFAULT_OKX_TAKER_FEE);
-                  setBybitFeePct(DEFAULT_BYBIT_TAKER_FEE);
-                  setGateIoFeePct(DEFAULT_GATEIO_TAKER_FEE);
-                  setMinVolumeUsdt(0);
-                }}
-              >
-                기본값으로 복원
-              </button>
-              <CollapseButton collapsed={settingsCollapsed} onClick={() => setSettingsCollapsed((prev) => !prev)} />
-            </div>
-          </div>
-
-          {!settingsCollapsed ? (
-            <>
-              <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
-                <FeeInput label="Binance taker" value={binanceFeePct} onChange={setBinanceFeePct} defaultValue={DEFAULT_BINANCE_TAKER_FEE} />
-                <FeeInput label="Bithumb taker" value={bithumbFeePct} onChange={setBithumbFeePct} defaultValue={DEFAULT_BITHUMB_TAKER_FEE} />
-                <FeeInput label="OKX taker" value={okxFeePct} onChange={setOkxFeePct} defaultValue={DEFAULT_OKX_TAKER_FEE} />
-                <FeeInput label="Bybit taker" value={bybitFeePct} onChange={setBybitFeePct} defaultValue={DEFAULT_BYBIT_TAKER_FEE} />
-                <FeeInput label="Gate.io taker" value={gateIoFeePct} onChange={setGateIoFeePct} defaultValue={DEFAULT_GATEIO_TAKER_FEE} />
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <span className="text-xs font-medium text-slate-400">최소 24시간 거래대금(크로스 거래소)</span>
-                <select
-                  value={minVolumeUsdt}
-                  onChange={(event) => setMinVolumeUsdt(Number(event.target.value))}
-                  className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none"
-                >
-                  {MIN_VOLUME_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-xs text-slate-500">빗썸 KRW 거래대금은 현재 USDT/KRW 환율로 환산합니다.</span>
-              </div>
-            </>
-          ) : null}
-        </section>
-
-        <section className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/5 p-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Browser Alerts</h2>
-            <p className="mt-1 text-sm text-slate-400">호가 기준 예상 순수익이 {ALERT_THRESHOLD_PCT.toFixed(1)}% 이상인 기회가 보이면 브라우저 알림을 보냅니다.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {!alertsCollapsed ? (
-              <>
-                <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300">
-                  Permission: {notificationPermission}
-                </span>
-                <button
-                  className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={async () => {
-                    if (!("Notification" in window)) {
-                      setNotificationPermission("unsupported");
-                      return;
-                    }
-
-                    const permission = await Notification.requestPermission();
-                    setNotificationPermission(permission);
-                  }}
-                  disabled={notificationPermission === "granted" || notificationPermission === "unsupported"}
-                >
-                  알림 권한 요청
-                </button>
-                <button
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    notificationsEnabled ? "bg-emerald-500 text-white hover:bg-emerald-400" : "border border-white/10 bg-slate-900/80 text-slate-200 hover:bg-slate-800"
-                  }`}
-                  onClick={() => setNotificationsEnabled((prev) => !prev)}
-                  disabled={notificationPermission !== "granted"}
-                >
-                  {notificationsEnabled ? "알림 켜짐" : "알림 꺼짐"}
-                </button>
-              </>
-            ) : null}
             <CollapseButton collapsed={alertsCollapsed} onClick={() => setAlertsCollapsed((prev) => !prev)} />
           </div>
+          {!alertsCollapsed ? (
+            <div className="mt-4 space-y-3 text-xs text-slate-300">
+              <div className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-center">
+                Permission: {notificationPermission}
+              </div>
+              <button
+                className="w-full rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={async () => {
+                  if (!("Notification" in window)) {
+                    setNotificationPermission("unsupported");
+                    return;
+                  }
+
+                  const permission = await Notification.requestPermission();
+                  setNotificationPermission(permission);
+                }}
+                disabled={notificationPermission === "granted" || notificationPermission === "unsupported"}
+              >
+                알림 권한 요청
+              </button>
+              <button
+                className={`w-full rounded-full px-4 py-2 text-sm font-medium transition ${
+                  notificationsEnabled ? "bg-emerald-500 text-white hover:bg-emerald-400" : "border border-white/10 bg-slate-900/80 text-slate-200 hover:bg-slate-800"
+                }`}
+                onClick={() => setNotificationsEnabled((prev) => !prev)}
+                disabled={notificationPermission !== "granted"}
+              >
+                {notificationsEnabled ? "알림 켜짐" : "알림 꺼짐"}
+              </button>
+            </div>
+          ) : null}
         </section>
 
         <OpportunityChartPanel
@@ -3535,36 +3475,6 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
   );
 }
 
-
-function FeeInput({
-  label,
-  value,
-  onChange,
-  defaultValue,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  defaultValue: number;
-}) {
-  return (
-    <label className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-300">
-      <div className="font-medium text-white">{label}</div>
-      <div className="mt-1 text-xs text-slate-500">기본값 {defaultValue.toFixed(3)}%</div>
-      <div className="mt-3 flex items-center gap-3">
-        <input
-          type="number"
-          min={0}
-          step={0.001}
-          value={value}
-          onChange={(event) => onChange(Number(event.target.value))}
-          className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none ring-0"
-        />
-        <span className="text-xs text-slate-400">%</span>
-      </div>
-    </label>
-  );
-}
 
 function WithdrawalWorkflowSection({
   candidate,
