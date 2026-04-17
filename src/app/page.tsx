@@ -702,6 +702,7 @@ export default function Home() {
   const [alertsCollapsed, setAlertsCollapsed] = useState(true);
   const [workflowCollapsed, setWorkflowCollapsed] = useState(true);
   const [filteredViewCollapsed, setFilteredViewCollapsed] = useState(true);
+  const [showAllActionRows, setShowAllActionRows] = useState(false);
   const [matrixCollapsed, setMatrixCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
   const [showScrollTopButton, setShowScrollTopButton] = useState(false);
@@ -2101,9 +2102,9 @@ export default function Home() {
         <section className="rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-2xl shadow-slate-950/40">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Filtered View</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">통합 기회 리스트</h2>
-              <p className="mt-1 max-w-3xl text-sm text-slate-400">텔레그램 알림 외에 전체 후보를 한 번에 훑어볼 때만 펼쳐서 쓰는 보조 리스트입니다.</p>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Action List</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">조치 필요 리스트</h2>
+              <p className="mt-1 max-w-3xl text-sm text-slate-400">갭이 높은 순으로 우선 확인할 TOP 10만 보여줍니다. 목표치 이상이면 행 전체를 미세하게 강조합니다.</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
@@ -2119,7 +2120,6 @@ export default function Home() {
                           ? "국내↔해외 CEX"
                           : "CEX-DEX"}
                 </div>
-                <div className="mt-1 text-slate-500">{opportunityExecutableOnly ? "실행 가능만 보기" : "전체 상태 보기"}</div>
               </div>
               <CollapseButton collapsed={filteredViewCollapsed} onClick={() => setFilteredViewCollapsed((prev) => !prev)} />
             </div>
@@ -2138,7 +2138,10 @@ export default function Home() {
                   <button
                     key={filter.key}
                     type="button"
-                    onClick={() => setOpportunityFilterKind(filter.key as OpportunityFilterKind)}
+                    onClick={() => {
+                      setOpportunityFilterKind(filter.key as OpportunityFilterKind);
+                      setShowAllActionRows(false);
+                    }}
                     className={`rounded-full border px-4 py-2 text-sm transition ${
                       opportunityFilterKind === filter.key
                         ? "border-cyan-400/30 bg-cyan-400/15 text-cyan-100"
@@ -2152,34 +2155,37 @@ export default function Home() {
                   <input
                     type="checkbox"
                     checked={opportunityExecutableOnly}
-                    onChange={(event) => setOpportunityExecutableOnly(event.target.checked)}
+                    onChange={(event) => {
+                      setOpportunityExecutableOnly(event.target.checked);
+                      setShowAllActionRows(false);
+                    }}
                     className="accent-cyan-400"
                   />
                   실행 가능만 보기
                 </label>
               </div>
 
-              <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
-                <table className="min-w-full table-fixed divide-y divide-white/10 text-sm">
-                  <thead className="bg-slate-900/70 text-slate-300">
-                    <tr>
-                      <th className="w-[220px] px-4 py-3 text-left font-medium">소스</th>
-                      <th className="w-[130px] px-4 py-3 text-left font-medium">심볼</th>
-                      <th className="w-[360px] px-4 py-3 text-left font-medium">경로 / 가격 / 네트워크</th>
-                      <th className="w-[140px] px-4 py-3 text-left font-medium">실행 Gap</th>
-                      <th className="w-[150px] px-4 py-3 text-left font-medium">예상 순수익</th>
-                      <th className="px-4 py-3 text-left font-medium">상태</th>
+              <div className="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/20">
+                <table className="min-w-full table-fixed text-sm">
+                  <thead className="text-slate-400">
+                    <tr className="border-b border-white/10 bg-white/[0.02]">
+                      <th className="w-[180px] px-5 py-4 text-left font-medium">코인 / 소스</th>
+                      <th className="w-[280px] px-5 py-4 text-left font-medium">경로</th>
+                      <th className="w-[220px] px-5 py-4 text-left font-medium">가격</th>
+                      <th className="w-[120px] px-5 py-4 text-left font-medium">GAP %</th>
+                      <th className="w-[140px] px-5 py-4 text-left font-medium">예상 순수익</th>
+                      <th className="px-5 py-4 text-left font-medium">상태</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 bg-slate-950/30">
+                  <tbody>
                     {filteredOpportunityRows.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                        <td colSpan={6} className="px-5 py-10 text-center text-slate-500">
                           현재 필터에서 보여줄 기회가 없습니다.
                         </td>
                       </tr>
                     ) : (
-                      filteredOpportunityRows.slice(0, 40).map((row) => {
+                      (showAllActionRows ? filteredOpportunityRows : filteredOpportunityRows.slice(0, 10)).map((row) => {
                         const transferSymbol = row.opportunity.symbol.replace("/KRW", "");
                         const leftTransferStatus = row.transferStatusConfig?.leftStatuses[transferSymbol];
                         const rightTransferStatus = row.transferStatusConfig?.rightStatuses?.[transferSymbol];
@@ -2190,12 +2196,7 @@ export default function Home() {
                         const crossPrices = getCrossMarketPrices(row.opportunity);
                         const foreignPriceMap = foreignPriceMapBySourceTitle[row.sourceTitle];
                         const foreignPrice = foreignPriceMap?.get(transferSymbol);
-                        const leftNetworkSummary = row.transferStatusConfig ? formatNetworkSummary(summarizeExecutableNetworks(leftTransferStatus)) : null;
-                        const rightNetworkSummary = row.transferStatusConfig ? formatNetworkSummary(summarizeExecutableNetworks(rightTransferStatus)) : null;
-                        const matchedNetworks =
-                          row.transferStatusConfig && leftTransferStatus && rightTransferStatus
-                            ? formatNetworkSummary(getMatchedNetworks(leftTransferStatus, rightTransferStatus))
-                            : null;
+                        const targetReached = row.opportunity.gapPct >= 5.5;
                         const formatBoardPrice = (exchangeLabel: string, value: number) => {
                           if (row.kind === "perp-perp") return formatOriginalPrice(value, "USDT");
                           if (exchangeLabel.includes("Bithumb") || exchangeLabel.includes("Upbit")) return formatPrice(value);
@@ -2206,47 +2207,41 @@ export default function Home() {
                         return (
                           <tr
                             key={row.id}
-                            className="cursor-pointer hover:bg-white/5"
+                            className={`cursor-pointer border-b border-white/10 transition hover:bg-white/[0.04] ${targetReached ? "bg-emerald-400/5" : "bg-transparent"}`}
                             onClick={() => {
                               setSelectedChart(getChartSelection(row.sourceTitle, row.opportunity));
                             }}
                           >
-                            <td className="px-4 py-3">
-                              <div className="text-sm font-medium text-white">{row.sourceTitle}</div>
+                            <td className="px-5 py-5 align-top">
+                              <div className="text-sm font-semibold text-white">{row.opportunity.symbol}</div>
+                              <div className="mt-1 text-xs text-slate-500">{row.sourceTitle}</div>
+                            </td>
+                            <td className="px-5 py-5 align-top">
+                              <div className="text-sm text-white">{row.routeLabel}</div>
                               <div className="mt-1 text-xs text-slate-500">{getOpportunityKindLabel(row.kind)}</div>
                             </td>
-                            <td className="px-4 py-3 font-medium text-white">{row.opportunity.symbol}</td>
-                            <td className="px-4 py-3 text-slate-300">
-                              <div className="text-sm text-white">{row.routeLabel}</div>
-                              <div className="mt-2 space-y-1.5 text-xs text-slate-400">
-                                {boardMode === "krw-cross" ? (
-                                  <>
-                                    <div>{row.opportunity.buyExchange} {formatBoardPrice(row.opportunity.buyExchange, row.opportunity.buyPrice)}</div>
-                                    <div>
-                                      {row.opportunity.sellExchange}{" "}
-                                      {foreignPrice
-                                        ? `${formatPrice(crossPrices.spotPrice)} (${formatOriginalPrice(foreignPrice.price, foreignPrice.quote)})`
-                                        : formatBoardPrice(row.opportunity.sellExchange, row.opportunity.sellPrice)}
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div>{row.opportunity.buyExchange} {formatBoardPrice(row.opportunity.buyExchange, row.opportunity.buyPrice)}</div>
-                                    <div>{row.opportunity.sellExchange} {formatBoardPrice(row.opportunity.sellExchange, row.opportunity.sellPrice)}</div>
-                                  </>
-                                )}
-                                {row.transferStatusConfig ? (
-                                  <>
-                                    <div className="pt-1 text-[11px] text-slate-500">{row.transferStatusConfig.leftExchangeLabel} 네트워크: {leftNetworkSummary}</div>
-                                    <div className="text-[11px] text-slate-500">{row.transferStatusConfig.rightExchangeLabel} 네트워크: {rightNetworkSummary}</div>
-                                    <div className="text-[11px] text-cyan-200/80">공통 네트워크: {matchedNetworks && matchedNetworks !== "네트워크 정보 없음" ? matchedNetworks : "확인 불가"}</div>
-                                  </>
-                                ) : null}
-                              </div>
+                            <td className="px-5 py-5 align-top text-xs text-slate-400">
+                              {boardMode === "krw-cross" ? (
+                                <>
+                                  <div>{row.opportunity.buyExchange} {formatBoardPrice(row.opportunity.buyExchange, row.opportunity.buyPrice)}</div>
+                                  <div className="mt-1">{row.opportunity.sellExchange} {foreignPrice ? `${formatPrice(crossPrices.spotPrice)} (${formatOriginalPrice(foreignPrice.price, foreignPrice.quote)})` : formatBoardPrice(row.opportunity.sellExchange, row.opportunity.sellPrice)}</div>
+                                </>
+                              ) : (
+                                <>
+                                  <div>{row.opportunity.buyExchange} {formatBoardPrice(row.opportunity.buyExchange, row.opportunity.buyPrice)}</div>
+                                  <div className="mt-1">{row.opportunity.sellExchange} {formatBoardPrice(row.opportunity.sellExchange, row.opportunity.sellPrice)}</div>
+                                </>
+                              )}
                             </td>
-                            <td className={`px-4 py-3 font-mono tabular-nums ${row.opportunity.gapPct >= 0 ? "text-emerald-300" : "text-amber-300"}`}>{formatPct(row.opportunity.gapPct)}</td>
-                            <td className={`px-4 py-3 font-mono tabular-nums font-semibold ${row.opportunity.estimatedNetPct > 0 ? "text-emerald-400" : "text-rose-300"}`}>{formatPct(row.opportunity.estimatedNetPct)}</td>
-                            <td className="px-4 py-3"><span className={`rounded-full border px-2.5 py-1 text-xs ${executionStatus.tone}`}>{executionStatus.label}</span></td>
+                            <td className={`px-5 py-5 align-top font-mono tabular-nums font-semibold ${targetReached ? "text-emerald-300" : row.opportunity.gapPct >= 0 ? "text-slate-200" : "text-amber-300"}`}>
+                              {formatPct(row.opportunity.gapPct)}
+                            </td>
+                            <td className={`px-5 py-5 align-top font-mono tabular-nums font-semibold ${row.opportunity.estimatedNetPct > 0 ? "text-emerald-400" : "text-rose-300"}`}>
+                              {formatPct(row.opportunity.estimatedNetPct)}
+                            </td>
+                            <td className="px-5 py-5 align-top">
+                              <span className={`rounded-full border px-2.5 py-1 text-xs ${executionStatus.tone}`}>{executionStatus.label}</span>
+                            </td>
                           </tr>
                         );
                       })
@@ -2254,6 +2249,18 @@ export default function Home() {
                   </tbody>
                 </table>
               </div>
+
+              {filteredOpportunityRows.length > 10 ? (
+                <div className="mt-4 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllActionRows((prev) => !prev)}
+                    className="rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                  >
+                    {showAllActionRows ? "접기" : `더 보기 (${filteredOpportunityRows.length - 10}개)`}
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : (
             <CollapsedSummary
@@ -2261,9 +2268,9 @@ export default function Home() {
                 id: row.id,
                 primary: `${row.opportunity.symbol} · ${row.sourceTitle}`,
                 secondary: `${formatPct(row.opportunity.estimatedNetPct)} · ${row.routeLabel}`,
-                accent: row.opportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300",
+                accent: row.opportunity.gapPct >= 5.5 ? "text-emerald-300" : row.opportunity.estimatedNetPct > 0 ? "text-slate-200" : "text-rose-300",
               }))}
-              emptyLabel="요약할 통합 기회가 없습니다."
+              emptyLabel="요약할 조치 필요 항목이 없습니다."
             />
           )}
         </section>
@@ -3649,4 +3656,3 @@ function WithdrawalWorkflowSection({
     </section>
   );
 }
-
