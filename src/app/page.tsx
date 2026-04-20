@@ -3524,6 +3524,8 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
   const baseHistory = history.length > 1 ? history : fallbackPoint;
   const visibleHistory = baseHistory.slice(-selectedWindow.points);
   const spreadExpression = selection ? getTradingViewSpreadExpression(selection.legs) : null;
+  const leftTradingViewSymbol = selection?.legs[0]?.tradingViewSymbol ?? null;
+  const rightTradingViewSymbol = selection?.legs[1]?.tradingViewSymbol ?? null;
   const latestPoint = visibleHistory[visibleHistory.length - 1] ?? null;
   const latestGap = latestPoint?.gapPct ?? selection?.gapPct ?? 0;
   const latestNet = latestPoint?.estimatedNetPct ?? selection?.estimatedNetPct ?? 0;
@@ -3631,7 +3633,34 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
               <span className="rounded-full px-3 py-1 text-[11px] font-semibold text-slate-950" style={{ backgroundColor: rightColor }}>{selection.legs[1].exchange}</span>
             </div>
           </div>
-          {spreadExpression ? (
+          {leftTradingViewSymbol || rightTradingViewSymbol ? (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {leftTradingViewSymbol ? (
+                <iframe
+                  key={`${leftTradingViewSymbol}-${selectedWindow.interval}`}
+                  src={getTradingViewEmbedUrl(leftTradingViewSymbol, selectedWindow.interval)}
+                  title={`${selection.symbol}-left-leg-chart`}
+                  className="h-[320px] w-full rounded-3xl border border-white/10 bg-slate-950/60"
+                />
+              ) : (
+                <div className="flex h-[320px] items-center justify-center rounded-3xl border border-dashed border-white/10 bg-slate-950/40 text-sm text-slate-500">
+                  좌측 심볼 차트를 지원하지 않습니다.
+                </div>
+              )}
+              {rightTradingViewSymbol ? (
+                <iframe
+                  key={`${rightTradingViewSymbol}-${selectedWindow.interval}`}
+                  src={getTradingViewEmbedUrl(rightTradingViewSymbol, selectedWindow.interval)}
+                  title={`${selection.symbol}-right-leg-chart`}
+                  className="h-[320px] w-full rounded-3xl border border-white/10 bg-slate-950/60"
+                />
+              ) : (
+                <div className="flex h-[320px] items-center justify-center rounded-3xl border border-dashed border-white/10 bg-slate-950/40 text-sm text-slate-500">
+                  우측 심볼 차트를 지원하지 않습니다.
+                </div>
+              )}
+            </div>
+          ) : spreadExpression ? (
             <iframe
               key={`${spreadExpression}-${selectedWindow.interval}`}
               src={getTradingViewEmbedUrl(spreadExpression, selectedWindow.interval)}
@@ -3640,7 +3669,7 @@ function OpportunityChartPanel({ selection, history, onClear }: { selection: Cha
             />
           ) : (
             <div className="flex h-[320px] items-center justify-center rounded-3xl border border-dashed border-white/10 bg-slate-950/40 text-sm text-slate-500">
-              TradingView 스프레드 식이 없는 조합입니다.
+              TradingView 심볼 차트를 지원하지 않는 조합입니다.
             </div>
           )}
         </div>
