@@ -320,6 +320,28 @@ function getOpportunityBoardMode(sourceTitle: string): "internal" | "krw-cross" 
   return "cross";
 }
 
+function getRowTargetId(row: AggregatedOpportunityRow) {
+  if (row.sourceTitle === "Bithumb KRW vs Binance Spot") return "bithumb-binance";
+  if (row.sourceTitle === "Bithumb KRW vs OKX Spot") return "bithumb-okx";
+  if (row.sourceTitle === "Bithumb KRW vs Gate.io Spot") return "bithumb-gateio";
+  if (row.sourceTitle === "Upbit KRW vs Bithumb KRW") return "upbit-bithumb";
+  if (row.sourceTitle === "Upbit KRW vs OKX Spot") return "upbit-okx";
+  if (row.sourceTitle === "Upbit KRW vs Binance Spot") return "upbit-binance";
+  if (row.sourceTitle === "Upbit KRW vs Bybit Spot") return "upbit-bybit";
+  if (row.sourceTitle === "Upbit KRW vs Gate.io Spot") return "upbit-gateio";
+  if (row.sourceTitle === "Bithumb KRW vs Solana DEX") return "cex-dex";
+  if (row.sourceTitle === "Binance Perp vs OKX Swap") return "perp-binance-okx";
+  if (row.sourceTitle === "Binance Perp vs Bybit Perp") return "perp-binance-bybit";
+  if (row.sourceTitle === "Binance Perp vs Gate.io Perp") return "perp-binance-gateio";
+  if (row.sourceTitle === "OKX Swap vs Bybit Perp") return "perp-okx-bybit";
+  if (row.sourceTitle === "OKX Swap vs Gate.io Perp") return "perp-okx-gateio";
+  if (row.sourceTitle === "Bybit Perp vs Gate.io Perp") return "perp-bybit-gateio";
+  if (row.kind === "basis") return "basis";
+  if (row.kind === "cex-dex") return "cex-dex";
+  if (row.kind === "cex-cex") return "cex-cex";
+  return "perp-perp";
+}
+
 function getTradingViewSymbol(exchangeLabel: string, symbol: string) {
   const normalized = symbol.replace("/KRW", "");
   const base = normalized.replace("USDT", "").replace("KRW", "");
@@ -1576,6 +1598,10 @@ export default function Home() {
     return quickScanRows[0] ?? null;
   }, [quickScanRows]);
 
+  const heroActionRows = useMemo(() => {
+    return quickScanRows.slice(0, 4);
+  }, [quickScanRows]);
+
   const totalTrackedAssets = useMemo(() => {
     return new Set(aggregatedOpportunityRows.map((row) => row.opportunity.symbol)).size;
   }, [aggregatedOpportunityRows]);
@@ -1818,31 +1844,70 @@ export default function Home() {
           </a>
         </section>
 
-        <section className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-cyan-950/10">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_280px]">
-            <div className="rounded-[28px] border border-white/10 bg-slate-950/60 p-5">
-              <div className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">오늘의 추천 행동</div>
+        <section className="rounded-[32px] border border-cyan-400/15 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),rgba(15,23,42,0.94)_45%,rgba(2,6,23,0.98)_100%)] p-6 shadow-2xl shadow-cyan-950/20">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_360px]">
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/65 p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-cyan-100">Best Live Opportunity</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300">Hero Route</span>
+              </div>
               {recommendedActionRow ? (
                 <>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">{recommendedActionRow.sourceTitle}</span>
-                    <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-100">실행 가능</span>
+                  <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">{recommendedActionRow.sourceTitle}</span>
+                        <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-100">실행 가능</span>
+                        <span className="rounded-full border border-white/10 bg-slate-900/80 px-2.5 py-1 text-[11px] text-slate-300">{getOpportunityKindLabel(recommendedActionRow.kind)}</span>
+                      </div>
+                      <div className="mt-4 text-4xl font-semibold tracking-tight text-white lg:text-5xl">{recommendedActionRow.opportunity.symbol}</div>
+                      <div className="mt-2 text-base text-slate-200 lg:text-lg">{recommendedActionRow.opportunity.buyExchange} → {recommendedActionRow.opportunity.sellExchange}</div>
+                      <div className="mt-2 text-sm text-slate-400">지금 바로 확인할 최고 우선 후보. 전송 가능성과 자산 동일성 검증을 통과한 기회만 상단에 올립니다.</div>
+                    </div>
+                    <div className="rounded-[24px] border border-emerald-300/20 bg-emerald-400/10 px-5 py-4 text-right">
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-emerald-100/80">Est. Net</div>
+                      <div className="mt-2 font-mono text-3xl font-semibold text-emerald-200 lg:text-4xl">{formatPct(recommendedActionRow.opportunity.estimatedNetPct)}</div>
+                      <div className="mt-2 text-xs text-emerald-100/70">Gap {formatPct(recommendedActionRow.opportunity.gapPct)}</div>
+                    </div>
                   </div>
-                  <div className="mt-4 text-3xl font-semibold tracking-tight text-white lg:text-4xl">
-                    {recommendedActionRow.opportunity.symbol} {formatPct(recommendedActionRow.opportunity.estimatedNetPct)}
-                  </div>
-                  <div className="mt-2 text-sm text-slate-300">
-                    {recommendedActionRow.opportunity.buyExchange} → {recommendedActionRow.opportunity.sellExchange}
-                  </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                      <div className="text-[11px] text-slate-500">매수 가격</div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Buy leg</div>
+                      <div className="mt-2 text-sm font-medium text-slate-200">{recommendedActionRow.opportunity.buyExchange}</div>
                       <div className="mt-1 font-mono text-base text-white">{formatPrice(recommendedActionRow.opportunity.buyPrice)}</div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                      <div className="text-[11px] text-slate-500">매도 가격</div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Sell leg</div>
+                      <div className="mt-2 text-sm font-medium text-slate-200">{recommendedActionRow.opportunity.sellExchange}</div>
                       <div className="mt-1 font-mono text-base text-white">{formatPrice(recommendedActionRow.opportunity.sellPrice)}</div>
                     </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Market context</div>
+                      <div className="mt-2 font-mono text-base text-white">USDT/KRW {usdtKrwRate ? formatPrice(usdtKrwRate) : "-"}</div>
+                      <div className="mt-1 text-xs text-slate-500">실시간 환산 기준 반영</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Risk profile</div>
+                      <div className={`mt-2 text-base font-semibold ${currentRiskLabel === "높음" ? "text-rose-300" : currentRiskLabel === "중간" ? "text-amber-300" : "text-cyan-300"}`}>{currentRiskLabel}</div>
+                      <div className="mt-1 text-xs text-slate-500">현재 수익률 {formatPct(currentYieldValue)}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedChart(getChartSelection(recommendedActionRow.sourceTitle, recommendedActionRow.opportunity));
+                        document.getElementById(getRowTargetId(recommendedActionRow))?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className="rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-300"
+                    >
+                      차트 + 상세 보기
+                    </button>
+                    <a href="#filtered-view" className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-100 transition hover:border-cyan-300/30 hover:bg-cyan-400/10 hover:text-cyan-100">
+                      전체 액션 리스트 열기
+                    </a>
                   </div>
                 </>
               ) : (
@@ -1852,32 +1917,72 @@ export default function Home() {
               )}
             </div>
 
-            <div className="flex flex-col gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!recommendedActionRow) return;
-                  setSelectedChart(getChartSelection(recommendedActionRow.sourceTitle, recommendedActionRow.opportunity));
-                  document.getElementById(recommendedActionRow.kind === "basis" ? "basis" : recommendedActionRow.kind === "cex-dex" ? "cex-dex" : recommendedActionRow.kind === "cex-cex" ? "cex-cex" : "perp-perp")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-                className="rounded-[28px] bg-cyan-400 px-6 py-5 text-lg font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
-                disabled={!recommendedActionRow}
-              >
-                거래 시작하기
-              </button>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="rounded-[28px] border border-white/10 bg-slate-950/55 p-4">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">Status Strip</div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4">
+                    <div className="text-[11px] text-slate-500">총 자산</div>
+                    <div className="mt-1 font-mono text-2xl text-white">{totalTrackedAssets.toLocaleString()}</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4">
+                    <div className="text-[11px] text-slate-500">실행 가능 루트</div>
+                    <div className="mt-1 font-mono text-2xl text-emerald-300">{executableCrossExchangeCount.toLocaleString()}</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4">
+                    <div className="text-[11px] text-slate-500">DEX 후보</div>
+                    <div className="mt-1 font-mono text-2xl text-cyan-200">{solanaDexTickers.length.toLocaleString()}</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4">
+                    <div className="text-[11px] text-slate-500">업데이트 상태</div>
+                    <div className="mt-1 text-sm font-medium text-white">{lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : "로딩 중"}</div>
+                    <div className="mt-1 flex items-center gap-1.5 text-[11px] text-cyan-300/70">
+                      <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-400" />
+                      다음 갱신까지 {countdown}초
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-              <div className="grid gap-3">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
-                  <div className="text-[11px] text-slate-500">총 자산</div>
-                  <div className="mt-1 font-mono text-xl text-white">{totalTrackedAssets.toLocaleString()}</div>
+              <div className="rounded-[28px] border border-white/10 bg-slate-950/55 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">Action Feed</div>
+                    <div className="mt-1 text-sm text-slate-400">지금 바로 볼 상위 실행 후보</div>
+                  </div>
+                  <div className="text-xs text-slate-500">TOP {heroActionRows.length}</div>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
-                  <div className="text-[11px] text-slate-500">현재 수익률</div>
-                  <div className="mt-1 font-mono text-xl text-emerald-300">{formatPct(currentYieldValue)}</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
-                  <div className="text-[11px] text-slate-500">위험도</div>
-                  <div className={`mt-1 text-xl font-semibold ${currentRiskLabel === "높음" ? "text-rose-300" : currentRiskLabel === "중간" ? "text-amber-300" : "text-cyan-300"}`}>{currentRiskLabel}</div>
+                <div className="mt-4 space-y-3">
+                  {heroActionRows.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-4 text-sm text-slate-500">2% 이상 후보가 없습니다.</div>
+                  ) : (
+                    heroActionRows.map((row) => (
+                      <button
+                        key={row.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedChart(getChartSelection(row.sourceTitle, row.opportunity));
+                          document.getElementById(getRowTargetId(row))?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                        className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left transition hover:border-cyan-300/30 hover:bg-cyan-400/10"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold text-white">{row.opportunity.symbol}</span>
+                              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">{getOpportunityKindLabel(row.kind)}</span>
+                            </div>
+                            <div className="mt-1 truncate text-xs text-slate-400">{row.routeLabel}</div>
+                            <div className="mt-2 text-[11px] text-slate-500">{row.sourceTitle}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`font-mono text-lg font-semibold ${row.opportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300"}`}>{formatPct(row.opportunity.estimatedNetPct)}</div>
+                            <div className="mt-1 text-[11px] text-slate-500">Gap {formatPct(row.opportunity.gapPct)}</div>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -1888,12 +1993,12 @@ export default function Home() {
           <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Quick Scan</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">2% 이상 통합 후보</h2>
-              <p className="mt-1 text-sm text-slate-400">전송 가능성과 자산 동일성 검증을 통과한 후보 중 예상 순수익 2% 이상만 바로 보여줍니다.</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">실행 가능한 상단 후보</h2>
+              <p className="mt-1 text-sm text-slate-400">Hero 아래에서 바로 스캔할 수 있도록 핵심 후보만 카드형으로 노출합니다. 더 긴 리스트는 아래 Action List에서 확인하세요.</p>
             </div>
             <div className="text-xs text-slate-500">상위 12개</div>
           </div>
-          <div className="space-y-3">
+          <div className="grid gap-3 xl:grid-cols-2">
             {quickScanRows.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-4 text-sm text-slate-500">2% 이상 후보가 없습니다.</div>
             ) : (
@@ -1903,42 +2008,38 @@ export default function Home() {
                   type="button"
                   onClick={() => {
                     setSelectedChart(getChartSelection(row.sourceTitle, row.opportunity));
-                    const targetId =
-                      row.sourceTitle === "Bithumb KRW vs Binance Spot" ? "bithumb-binance" :
-                      row.sourceTitle === "Bithumb KRW vs OKX Spot" ? "bithumb-okx" :
-                      row.sourceTitle === "Bithumb KRW vs Gate.io Spot" ? "bithumb-gateio" :
-                      row.sourceTitle === "Upbit KRW vs Bithumb KRW" ? "upbit-bithumb" :
-                      row.sourceTitle === "Upbit KRW vs OKX Spot" ? "upbit-okx" :
-                      row.sourceTitle === "Upbit KRW vs Binance Spot" ? "upbit-binance" :
-                      row.sourceTitle === "Upbit KRW vs Bybit Spot" ? "upbit-bybit" :
-                      row.sourceTitle === "Upbit KRW vs Gate.io Spot" ? "upbit-gateio" :
-                      row.sourceTitle === "Bithumb KRW vs Solana DEX" ? "cex-dex" :
-                      row.sourceTitle === "Binance Perp vs OKX Swap" ? "perp-binance-okx" :
-                      row.sourceTitle === "Binance Perp vs Bybit Perp" ? "perp-binance-bybit" :
-                      row.sourceTitle === "Binance Perp vs Gate.io Perp" ? "perp-binance-gateio" :
-                      row.sourceTitle === "OKX Swap vs Bybit Perp" ? "perp-okx-bybit" :
-                      row.sourceTitle === "OKX Swap vs Gate.io Perp" ? "perp-okx-gateio" :
-                      row.sourceTitle === "Bybit Perp vs Gate.io Perp" ? "perp-bybit-gateio" :
-                      row.kind === "basis" ? "basis" : row.kind === "cex-dex" ? "cex-dex" : row.kind === "cex-cex" ? "cex-cex" : "perp-perp";
-                    document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    document.getElementById(getRowTargetId(row))?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-4 text-left transition hover:border-cyan-300/30 hover:bg-slate-900"
+                  className="w-full rounded-[24px] border border-white/10 bg-slate-950/60 px-4 py-4 text-left transition hover:border-cyan-300/30 hover:bg-slate-900"
                 >
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold text-white">{row.opportunity.symbol}</span>
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-300">{row.sourceTitle}</span>
+                  <div className="flex h-full flex-col gap-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-semibold text-white">{row.opportunity.symbol}</span>
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-300">{getOpportunityKindLabel(row.kind)}</span>
+                        </div>
+                        <div className="mt-1 text-sm text-slate-300">{row.routeLabel}</div>
                       </div>
-                      <div className="mt-1 text-xs text-slate-400">{row.routeLabel}</div>
-                      <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
-                        <span>매수 {formatPrice(row.opportunity.buyPrice)}</span>
-                        <span>매도 {formatPrice(row.opportunity.sellPrice)}</span>
-                        <span>Gap {formatPct(row.opportunity.gapPct)}</span>
+                      <div className={`text-right font-mono text-xl font-semibold ${row.opportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300"}`}>{formatPct(row.opportunity.estimatedNetPct)}</div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Source</div>
+                        <div className="mt-1 text-xs text-slate-200">{row.sourceTitle}</div>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Buy</div>
+                        <div className="mt-1 font-mono text-sm text-white">{formatPrice(row.opportunity.buyPrice)}</div>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Sell</div>
+                        <div className="mt-1 font-mono text-sm text-white">{formatPrice(row.opportunity.sellPrice)}</div>
                       </div>
                     </div>
-                    <div className={`text-right font-mono text-lg font-semibold ${row.opportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                      {formatPct(row.opportunity.estimatedNetPct)}
+                    <div className="flex items-center justify-between gap-3 text-xs text-slate-400">
+                      <span>Gap {formatPct(row.opportunity.gapPct)}</span>
+                      <span className="text-cyan-200">차트와 보드 열기 →</span>
                     </div>
                   </div>
                 </button>
@@ -2033,7 +2134,7 @@ export default function Home() {
           }}
         />
 
-        <section className="rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-2xl shadow-slate-950/40">
+        <section id="filtered-view" className="rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-2xl shadow-slate-950/40">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Action List</p>
