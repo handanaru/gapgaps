@@ -178,12 +178,12 @@ const MATRIX_COLUMNS: Array<{ key: MatrixSortKey; label: string }> = [
 ];
 
 const NAVIGATION_SECTIONS: NavigationSection[] = [
-  { id: "overview", eyebrow: "Overview", title: "대시보드", description: "요약, 필터, 승인 흐름" },
-  { id: "basis", eyebrow: "Perp Basis", title: "현물과 선물 갭", description: "거래소 내부 현선 갭" },
-  { id: "perp-perp", eyebrow: "Perp Spread", title: "선물과 선물 갭", description: "거래소 간 선선 갭" },
-  { id: "cex-cex", eyebrow: "Domestic vs Global", title: "국내 CEX vs 해외 CEX", description: "국내 원화 거래소와 해외 CEX 비교" },
-  { id: "cex-dex", eyebrow: "CEX-DEX", title: "현물과 현물 갭", description: "중앙화 거래소와 DEX 비교" },
-  { id: "matrix", eyebrow: "Matrix", title: "가격 매트릭스", description: "전체 시세 스캔" },
+  { id: "overview", eyebrow: "Live Overview", title: "라이브 개요", description: "핵심 후보, 필터, 승인 흐름" },
+  { id: "basis", eyebrow: "Basis Board", title: "현선 갭 보드", description: "거래소 내부 베이시스 스캔" },
+  { id: "perp-perp", eyebrow: "Perp Spread Board", title: "선선 갭 보드", description: "거래소 간 선물 괴리" },
+  { id: "cex-cex", eyebrow: "Domestic Premium Routes", title: "국내↔해외 CEX", description: "원화 축 기준 해외 CEX 비교" },
+  { id: "cex-dex", eyebrow: "CEX-DEX Routes", title: "CEX↔DEX 루트", description: "체인 호환성 기반 현물 비교" },
+  { id: "matrix", eyebrow: "Reference Matrix", title: "전체 시세 매트릭스", description: "참고용 전체 시장 스캔" },
 ];
 
 function getOpportunityRouteLabel(title: string) {
@@ -1748,11 +1748,11 @@ export default function Home() {
         <header id="overview" className="scroll-mt-24 flex flex-col gap-4 rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-cyan-950/20">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-medium uppercase tracking-[0.2em] text-cyan-300">GapGaps</p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white lg:text-3xl">Crypto Arbitrage Monitor</h1>
+              <p className="text-sm font-medium uppercase tracking-[0.2em] text-cyan-300">GapGaps Live</p>
+              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white lg:text-3xl">Cross-Exchange Opportunity Radar</h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-300 lg:text-base">
-                바이낸스, 빗썸, 업비트, OKX, Bybit, Gate.io와 Solana DEX 시세를 3초마다 불러와 거래소 간 가격 차이를 빠르게 비교하는
-                실시간 대시보드입니다.
+                바이낸스, 빗썸, 업비트, OKX, Bybit, Gate.io와 Solana DEX 시세를 3초마다 불러와 거래소 간 가격 차이를 스캔하고,
+                지금 바로 볼 가치가 있는 실행 후보를 위쪽에 우선 배치하는 실시간 오퍼튜니티 보드입니다.
               </p>
             </div>
             <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
@@ -1954,7 +1954,7 @@ export default function Home() {
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
           <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Quick Scan</p>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Opportunity Feed</p>
               <h2 className="mt-2 text-xl font-semibold text-white">실행 가능한 상단 후보</h2>
               <p className="mt-1 text-sm text-slate-400">Hero 아래에서 바로 스캔할 수 있도록 핵심 후보만 카드형으로 노출합니다. 더 긴 리스트는 아래 Action List에서 확인하세요.</p>
             </div>
@@ -2099,7 +2099,7 @@ export default function Home() {
         <section id="filtered-view" className="rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-2xl shadow-slate-950/40">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Action List</p>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Action Board</p>
               <h2 className="mt-2 text-xl font-semibold text-white">조치 필요 리스트</h2>
               <p className="mt-1 max-w-3xl text-sm text-slate-400">갭이 높은 순으로 우선 확인할 TOP 10만 보여줍니다. 목표치 이상이면 행 전체를 미세하게 강조합니다.</p>
             </div>
@@ -2306,7 +2306,7 @@ export default function Home() {
         <section className="rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-2xl shadow-slate-950/40">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Filtered View</p>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Market Explorer</p>
               <h2 className="mt-2 text-xl font-semibold text-white">통합 기회 리스트</h2>
               <p className="mt-1 max-w-3xl text-sm text-slate-400">섹션을 오가며 찾지 않고, 한 화면에서 필터만 바꿔가며 전체 기회를 훑는 메인 리스트입니다.</p>
             </div>
@@ -2483,8 +2483,8 @@ export default function Home() {
 
         <CategorySection
           id="basis"
-          eyebrow="Perp Basis"
-          title="현물과 선물 갭 (현선갭)"
+          eyebrow="Basis Board"
+          title="현선 갭 보드"
           description="같은 거래소 안에서 현물과 선물 가격이 얼마나 벌어지는지 보는 영역입니다. 내부 베이시스 확인과 헷지 아이디어 검토에 적합합니다."
         >
           <OpportunitySection
@@ -2516,8 +2516,8 @@ export default function Home() {
 
         <CategorySection
           id="perp-perp"
-          eyebrow="Perp Spread"
-          title="선물과 선물 갭 (선선갭)"
+          eyebrow="Perp Spread Board"
+          title="선선 갭 보드"
           description="거래소 간 선물 가격 차이를 비교하는 영역입니다. 같은 코인의 무기한 계약 가격 괴리를 실행 기준으로 먼저 확인합니다."
         >
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-300/15 bg-slate-950/60 px-3 py-3">
@@ -2609,8 +2609,8 @@ export default function Home() {
 
         <CategorySection
           id="cex-cex"
-          eyebrow="Domestic vs Global"
-          title="국내 CEX vs 해외 CEX"
+          eyebrow="Domestic Premium Routes"
+          title="국내↔해외 CEX"
           description="국내 원화 거래소를 먼저 보고, 그 다음 해외 CEX 현물과 비교하는 구조로 정리했습니다. 빗썸과 업비트를 각각 기준축으로 두고 같은 조건에서 해외 가격을 비교합니다."
         >
           <div className="grid gap-3 md:grid-cols-2">
@@ -2884,8 +2884,8 @@ export default function Home() {
 
         <CategorySection
           id="cex-dex"
-          eyebrow="CEX-DEX"
-          title="현물과 현물 갭 (CEX-DEX)"
+          eyebrow="CEX-DEX Routes"
+          title="CEX↔DEX 루트"
           description="중앙화 거래소 현물과 DEX 현물 가격을 비교하는 영역입니다. 체인 호환성과 입출금 상태를 먼저 보고, 그 다음 가격 차이를 해석하는 흐름에 맞췄습니다."
         >
           <div className="mb-4 rounded-3xl border border-white/10 bg-slate-950/35 p-5">
@@ -3184,7 +3184,8 @@ function OpportunitySection({
     <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-white">{title}</h2>
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Preview Board</p>
+          <h2 className="mt-2 text-xl font-semibold text-white">{title}</h2>
           <p className="mt-1 text-sm text-slate-400">{description}</p>
         </div>
         <div className="flex items-center gap-2">
