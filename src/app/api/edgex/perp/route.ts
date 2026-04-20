@@ -6,6 +6,7 @@ const EDGEX_BASE_URL = "https://pro.edgex.exchange/api";
 const EDGEX_METADATA_URL = `${EDGEX_BASE_URL}/v1/public/meta/getMetaData`;
 const EDGEX_DEPTH_URL = `${EDGEX_BASE_URL}/v1/public/quote/getDepth`;
 const DEPTH_LEVEL = 15;
+const DEPTH_CONCURRENCY = 8;
 
 export async function GET() {
   try {
@@ -47,38 +48,42 @@ export async function GET() {
 
     const depthByContractId: Record<string, { contractId?: string; bids?: Array<{ price?: string }>; asks?: Array<{ price?: string }> }> = {};
 
-    for (let index = 0; index < tradableContracts.length; index += 40) {
-      const batch = tradableContracts.slice(index, index + 40);
+    for (let index = 0; index < tradableContracts.length; index += DEPTH_CONCURRENCY) {
+      const batch = tradableContracts.slice(index, index + DEPTH_CONCURRENCY);
       if (batch.length === 0) continue;
 
-      const params = new URLSearchParams();
-      params.append("level", String(DEPTH_LEVEL));
-      for (const contractId of batch) {
-        params.append("contractId", contractId);
-      }
+      const responses = await Promise.all(
+        batch.map(async (contractId) => {
+          const params = new URLSearchParams();
+          params.append("level", String(DEPTH_LEVEL));
+          params.append("contractId", contractId);
 
-      const depthResponse = await fetch(`${EDGEX_DEPTH_URL}?${params.toString()}`, {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "Mozilla/5.0",
-        },
-        next: { revalidate: 0 },
-      });
+          const depthResponse = await fetch(`${EDGEX_DEPTH_URL}?${params.toString()}`, {
+            headers: {
+              Accept: "application/json",
+              "User-Agent": "Mozilla/5.0",
+            },
+            next: { revalidate: 0 },
+          });
 
-      if (!depthResponse.ok) {
-        throw new Error(`EdgeX depth fetch failed: ${depthResponse.status}`);
-      }
+          if (!depthResponse.ok) {
+            throw new Error(`EdgeX depth fetch failed: ${depthResponse.status}`);
+          }
 
-      const depthJson = (await depthResponse.json()) as {
-        code?: string;
-        data?: Array<{ contractId?: string; bids?: Array<{ price?: string }>; asks?: Array<{ price?: string }> }>;
-      };
+          const depthJson = (await depthResponse.json()) as {
+            code?: string;
+            data?: Array<{ contractId?: string; bids?: Array<{ price?: string }>; asks?: Array<{ price?: string }> }>;
+          };
 
-      if (depthJson.code !== "SUCCESS") {
-        throw new Error(`EdgeX depth returned invalid payload: ${depthJson.code ?? "unknown"}`);
-      }
+          if (depthJson.code !== "SUCCESS") {
+            throw new Error(`EdgeX depth returned invalid payload: ${depthJson.code ?? "unknown"}`);
+          }
 
-      for (const item of depthJson.data ?? []) {
+          return depthJson.data?.[0] ?? null;
+        })
+      );
+
+      for (const item of responses) {
         if (item?.contractId) {
           depthByContractId[item.contractId] = item;
         }

@@ -407,6 +407,10 @@ export function normalizeEdgeXPerpTickers(raw: {
     quoteCoinId: string;
     enableTrade?: boolean;
     enableDisplay?: boolean;
+    fundingInterestRate?: string;
+    defaultTakerFeeRate?: string;
+    defaultMakerFeeRate?: string;
+    displayMaxLeverage?: string | number;
   }>;
   depthByContractId?: Record<string, { contractId?: string; bids?: Array<{ price?: string }>; asks?: Array<{ price?: string }> }>;
 }): NormalizedTicker[] {
@@ -442,6 +446,10 @@ export function normalizeEdgeXPerpTickers(raw: {
       price,
       bidPrice: Number.isFinite(bestBid) && bestBid > 0 ? bestBid : undefined,
       askPrice: Number.isFinite(bestAsk) && bestAsk > 0 ? bestAsk : undefined,
+      metadata: {
+        dexId: "edgex",
+        sourceUrl: `https://pro.edgex.exchange/trade/${contract.contractName}`,
+      },
       timestamp: Date.now(),
     });
   }
