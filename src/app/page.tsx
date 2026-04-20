@@ -2926,28 +2926,38 @@ export default function Home() {
           title="현물과 현물 갭 (CEX-DEX)"
           description="중앙화 거래소 현물과 DEX 현물 가격을 비교하는 영역입니다. 체인 호환성과 입출금 상태를 먼저 보고, 그 다음 가격 차이를 해석하는 흐름에 맞췄습니다."
         >
-          <div className="mb-4 grid gap-3 md:grid-cols-3">
-            <SummaryCard
-              label="실행 가능"
-              value={solanaDexExecutionRows.filter((row) => row.status === "executable").length.toLocaleString()}
-              hint="빗썸과 Solana 공통 네트워크 입출금 가능"
-            />
-            <SummaryCard
-              label="참고용"
-              value={solanaDexExecutionRows.filter((row) => row.status === "reference-only").length.toLocaleString()}
-              hint="공통 네트워크는 있으나 상태 미완전"
-            />
-            <SummaryCard
-              label="제외"
-              value={solanaDexExecutionRows.filter((row) => row.status === "blocked").length.toLocaleString()}
-              hint="공통 네트워크가 없어 비교 제외"
-            />
+          <div className="mb-4 rounded-3xl border border-white/10 bg-slate-950/35 p-5">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Execution Diagnostics</p>
+                <h3 className="mt-2 text-lg font-semibold text-white">DEX route readiness</h3>
+                <p className="mt-1 text-sm text-slate-400">먼저 체인/입출금 조건을 통과한 토큰만 위로 올리고, 나머지는 아래 진단 레이어에서 확인하도록 분리했습니다.</p>
+              </div>
+              <div className="text-xs text-slate-500">참고 레이어</div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <SummaryCard
+                label="Executable"
+                value={solanaDexExecutionRows.filter((row) => row.status === "executable").length.toLocaleString()}
+                hint="빗썸과 Solana 공통 네트워크 입출금 가능"
+              />
+              <SummaryCard
+                label="Reference only"
+                value={solanaDexExecutionRows.filter((row) => row.status === "reference-only").length.toLocaleString()}
+                hint="공통 네트워크는 있으나 상태 미완전"
+              />
+              <SummaryCard
+                label="Blocked"
+                value={solanaDexExecutionRows.filter((row) => row.status === "blocked").length.toLocaleString()}
+                hint="공통 네트워크가 없어 비교 제외"
+              />
+            </div>
           </div>
 
-          <div className="mb-5 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+          <div className="mb-5 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/28">
             <div className="border-b border-white/10 px-4 py-3">
               <div className="text-sm font-semibold text-white">DEX 실행 가능성 점검</div>
-              <div className="mt-1 text-xs text-slate-400">가격 비교 전에 빗썸과 Solana 네트워크가 실제로 맞는 토큰만 먼저 추립니다. 아래에는 실제 가격차 표도 바로 펼쳐집니다.</div>
+              <div className="mt-1 text-xs text-slate-500">가격 비교 전에 빗썸과 Solana 네트워크가 실제로 맞는 토큰만 먼저 추립니다. 아래 표는 액션 영역 바깥의 진단 참고용입니다.</div>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-xs text-slate-300">
@@ -3009,13 +3019,13 @@ export default function Home() {
           />
         </CategorySection>
 
-        <section id="matrix" className="scroll-mt-24 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section id="matrix" className="scroll-mt-24 rounded-3xl border border-white/10 bg-slate-950/35 p-6 shadow-xl shadow-slate-950/20">
           <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-white">Exchange Coin Price Matrix</h2>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Reference Layer</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">Full Market Scan Matrix</h2>
               <p className="mt-1 text-sm text-slate-400">
-                빗썸 KRW, 업비트 KRW, OKX Spot, Binance Spot, Bybit Spot, Gate.io Spot 가격을 모두 KRW 기준으로 비교합니다. 선물 종목이 있는 코인만 보거나 최소
-                스프레드 이상만 필터링해서 볼 수 있습니다.
+                빗썸 KRW, 업비트 KRW, OKX Spot, Binance Spot, Bybit Spot, Gate.io Spot 가격을 모두 KRW 기준으로 비교합니다. 이 영역은 실행 후보를 고른 뒤 전체 시장 분포를 확인하는 참고 레이어입니다.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -3427,8 +3437,8 @@ function TransferNoticeBadge({ text }: { text: string }) {
 
 function SummaryCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-slate-950/30">
-      <p className="text-sm text-slate-400">{label}</p>
+    <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-lg shadow-slate-950/20">
+      <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-500">{label}</p>
       <div className="mt-3 text-2xl font-semibold tracking-tight text-white">{value}</div>
       <p className="mt-2 text-xs text-slate-500">{hint}</p>
     </div>
