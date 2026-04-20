@@ -345,7 +345,8 @@ function getTradingViewEmbedUrl(symbol: string, interval = "15") {
 function getTradingViewSpreadExpression(legs: [ChartLeg, ChartLeg]) {
   const [left, right] = legs;
   if (!left.tradingViewSymbol || !right.tradingViewSymbol) return null;
-  return `${left.tradingViewSymbol}-${right.tradingViewSymbol}`;
+  if (left.tradingViewSymbol === right.tradingViewSymbol) return left.tradingViewSymbol;
+  return `(${left.tradingViewSymbol})-(${right.tradingViewSymbol})`;
 }
 
 function formatOriginalPrice(value: number, quote: string) {
