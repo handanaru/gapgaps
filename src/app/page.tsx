@@ -2203,92 +2203,80 @@ export default function Home() {
                 </label>
               </div>
 
-              <div className="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/20">
-                <table className="min-w-full table-fixed text-sm">
-                  <thead className="text-slate-400">
-                    <tr className="border-b border-white/10 bg-white/[0.02]">
-                      <th className="w-[180px] px-5 py-4 text-left font-medium">코인 / 소스</th>
-                      <th className="w-[280px] px-5 py-4 text-left font-medium">경로</th>
-                      <th className="w-[220px] px-5 py-4 text-left font-medium">가격</th>
-                      <th className="w-[120px] px-5 py-4 text-left font-medium">GAP %</th>
-                      <th className="w-[140px] px-5 py-4 text-left font-medium">예상 순수익</th>
-                      <th className="px-5 py-4 text-left font-medium">상태</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredOpportunityRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-5 py-10 text-center text-slate-500">
-                          현재 필터에서 보여줄 기회가 없습니다.
-                        </td>
-                      </tr>
-                    ) : (
-                      (showAllActionRows ? filteredOpportunityRows : filteredOpportunityRows.slice(0, 10)).map((row) => {
-                        const transferSymbol = row.opportunity.symbol.replace("/KRW", "");
-                        const leftTransferStatus = row.transferStatusConfig?.leftStatuses[transferSymbol];
-                        const rightTransferStatus = row.transferStatusConfig?.rightStatuses?.[transferSymbol];
-                        const executionStatus = row.transferStatusConfig
-                          ? getExecutionStatus(row.opportunity, leftTransferStatus, rightTransferStatus)
-                          : { label: "참고용", tone: "border-white/10 bg-slate-900/80 text-slate-400" };
-                        const boardMode = getOpportunityBoardMode(row.sourceTitle);
-                        const crossPrices = getCrossMarketPrices(row.opportunity);
-                        const foreignPriceMap = foreignPriceMapBySourceTitle[row.sourceTitle];
-                        const foreignPrice = foreignPriceMap?.get(transferSymbol);
-                        const targetReached = row.opportunity.gapPct >= 5.5;
-                        const formatBoardPrice = (exchangeLabel: string, value: number) => {
-                          if (row.kind === "perp-perp") return formatOriginalPrice(value, "USDT");
-                          if (exchangeLabel.includes("Bithumb") || exchangeLabel.includes("Upbit")) return formatPrice(value);
-                          if (usdtKrwRate) return `${formatPrice(value * usdtKrwRate)} (${formatOriginalPrice(value, "USDT")})`;
-                          return formatOriginalPrice(value, "USDT");
-                        };
+              <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                {filteredOpportunityRows.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-white/10 bg-slate-950/30 px-5 py-10 text-center text-slate-500 xl:col-span-2">
+                    현재 필터에서 보여줄 기회가 없습니다.
+                  </div>
+                ) : (
+                  (showAllActionRows ? filteredOpportunityRows : filteredOpportunityRows.slice(0, 10)).map((row) => {
+                    const transferSymbol = row.opportunity.symbol.replace("/KRW", "");
+                    const leftTransferStatus = row.transferStatusConfig?.leftStatuses[transferSymbol];
+                    const rightTransferStatus = row.transferStatusConfig?.rightStatuses?.[transferSymbol];
+                    const executionStatus = row.transferStatusConfig
+                      ? getExecutionStatus(row.opportunity, leftTransferStatus, rightTransferStatus)
+                      : { label: "참고용", tone: "border-white/10 bg-slate-900/80 text-slate-400" };
+                    const boardMode = getOpportunityBoardMode(row.sourceTitle);
+                    const crossPrices = getCrossMarketPrices(row.opportunity);
+                    const foreignPriceMap = foreignPriceMapBySourceTitle[row.sourceTitle];
+                    const foreignPrice = foreignPriceMap?.get(transferSymbol);
+                    const targetReached = row.opportunity.gapPct >= 5.5;
+                    const formatBoardPrice = (exchangeLabel: string, value: number) => {
+                      if (row.kind === "perp-perp") return formatOriginalPrice(value, "USDT");
+                      if (exchangeLabel.includes("Bithumb") || exchangeLabel.includes("Upbit")) return formatPrice(value);
+                      if (usdtKrwRate) return `${formatPrice(value * usdtKrwRate)} (${formatOriginalPrice(value, "USDT")})`;
+                      return formatOriginalPrice(value, "USDT");
+                    };
 
-                        return (
-                          <tr
-                            key={row.id}
-                            className={`cursor-pointer border-b border-white/10 transition hover:bg-white/[0.04] ${targetReached ? "bg-emerald-400/5" : "bg-transparent"}`}
-                            onClick={() => {
-                              setSelectedChart(getChartSelection(row.sourceTitle, row.opportunity));
-                            }}
-                          >
-                            <td className="px-5 py-5 align-top">
-                              <div className="text-sm font-semibold text-white">{row.opportunity.symbol}</div>
-                              <div className="mt-1 text-xs text-slate-500">{row.sourceTitle}</div>
-                            </td>
-                            <td className="px-5 py-5 align-top">
-                              <div className="text-sm text-white">{row.routeLabel}</div>
-                              <div className="mt-1 text-xs text-slate-500">{getOpportunityKindLabel(row.kind)}</div>
-                            </td>
-                            <td className="px-5 py-5 align-top text-xs text-slate-400">
-                              {boardMode === "krw-cross" ? (
-                                <>
-                                  <div>{row.opportunity.buyExchange} {formatBoardPrice(row.opportunity.buyExchange, row.opportunity.buyPrice)}</div>
-                                  <div className="mt-1">{row.opportunity.sellExchange} {foreignPrice ? `${formatPrice(crossPrices.spotPrice)} (${formatOriginalPrice(foreignPrice.price, foreignPrice.quote)})` : formatBoardPrice(row.opportunity.sellExchange, row.opportunity.sellPrice)}</div>
-                                </>
-                              ) : (
-                                <>
-                                  <div>{row.opportunity.buyExchange} {formatBoardPrice(row.opportunity.buyExchange, row.opportunity.buyPrice)}</div>
-                                  <div className="mt-1">{row.opportunity.sellExchange} {formatBoardPrice(row.opportunity.sellExchange, row.opportunity.sellPrice)}</div>
-                                </>
-                              )}
-                            </td>
-                            <td className={`px-5 py-5 align-top font-mono tabular-nums font-semibold ${targetReached ? "text-emerald-300" : row.opportunity.gapPct >= 0 ? "text-slate-200" : "text-amber-300"}`}>
-                              {formatPct(row.opportunity.gapPct)}
-                            </td>
-                            <td className={`px-5 py-5 align-top font-mono tabular-nums font-semibold ${row.opportunity.estimatedNetPct > 0 ? "text-emerald-400" : "text-rose-300"}`}>
-                              {formatPct(row.opportunity.estimatedNetPct)}
-                            </td>
-                            <td className="px-5 py-5 align-top">
-                              <div className="flex items-center justify-between gap-3">
-                                <span className={`rounded-full border px-2.5 py-1 text-xs ${executionStatus.tone}`}>{executionStatus.label}</span>
-                                <span className="text-xs text-slate-500">열기 →</span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                    return (
+                      <button
+                        key={row.id}
+                        type="button"
+                        className={`group w-full rounded-[28px] border px-5 py-5 text-left transition ${targetReached ? "border-emerald-300/20 bg-emerald-400/5 hover:bg-emerald-400/10" : "border-white/10 bg-slate-950/35 hover:border-cyan-300/25 hover:bg-slate-900/70"}`}
+                        onClick={() => {
+                          setSelectedChart(getChartSelection(row.sourceTitle, row.opportunity));
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-base font-semibold text-white">{row.opportunity.symbol}</span>
+                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">{getOpportunityKindLabel(row.kind)}</span>
+                              <span className={`rounded-full border px-2.5 py-1 text-[11px] ${executionStatus.tone}`}>{executionStatus.label}</span>
+                            </div>
+                            <div className="mt-2 text-sm text-slate-200">{row.routeLabel}</div>
+                            <div className="mt-1 text-xs text-slate-500">{row.sourceTitle}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`font-mono text-2xl font-semibold ${row.opportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300"}`}>{formatPct(row.opportunity.estimatedNetPct)}</div>
+                            <div className={`mt-1 text-xs font-medium ${targetReached ? "text-emerald-200/80" : row.opportunity.gapPct >= 0 ? "text-slate-400" : "text-amber-300"}`}>Gap {formatPct(row.opportunity.gapPct)}</div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Buy leg</div>
+                            <div className="mt-2 text-xs text-slate-400">{row.opportunity.buyExchange}</div>
+                            <div className="mt-1 font-mono text-sm text-white">{formatBoardPrice(row.opportunity.buyExchange, row.opportunity.buyPrice)}</div>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Sell leg</div>
+                            <div className="mt-2 text-xs text-slate-400">{row.opportunity.sellExchange}</div>
+                            <div className="mt-1 font-mono text-sm text-white">{boardMode === "krw-cross" && foreignPrice ? `${formatPrice(crossPrices.spotPrice)} (${formatOriginalPrice(foreignPrice.price, foreignPrice.quote)})` : formatBoardPrice(row.opportunity.sellExchange, row.opportunity.sellPrice)}</div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs">
+                          <div className="flex flex-wrap items-center gap-2 text-slate-500">
+                            <span>클릭하면 차트와 보드로 이동</span>
+                            {targetReached ? <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-100">target hit</span> : null}
+                          </div>
+                          <span className="text-cyan-200 transition group-hover:translate-x-0.5">열기 →</span>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
               </div>
 
               {filteredOpportunityRows.length > 10 ? (
