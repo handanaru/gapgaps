@@ -640,6 +640,51 @@ function getExecutionStatus(
   return { label: "실행 가능", tone: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" };
 }
 
+function getExecutionReasons(
+  opportunity: ArbitrageOpportunity,
+  leftStatus: TransferStatus | undefined,
+  rightStatus?: TransferStatus
+) {
+  const reasons: Array<{ label: string; tone: string }> = [];
+
+  if (!leftStatus || !rightStatus) {
+    reasons.push({ label: "status missing", tone: "border-white/10 bg-slate-900/80 text-slate-400" });
+    return reasons;
+  }
+
+  const movingFromLeft = isDomesticKrwLeg(opportunity.buyExchange);
+  const sourceStatus = movingFromLeft ? leftStatus : rightStatus;
+  const destinationStatus = movingFromLeft ? rightStatus : leftStatus;
+  const matchedNetworks = getMatchedNetworks(sourceStatus, destinationStatus);
+
+  reasons.push({
+    label: sourceStatus.withdrawEnabled === true ? "withdraw ok" : "withdraw blocked",
+    tone: sourceStatus.withdrawEnabled === true ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : "border-rose-400/20 bg-rose-500/10 text-rose-200",
+  });
+  reasons.push({
+    label: destinationStatus.depositEnabled === true ? "deposit ok" : "deposit blocked",
+    tone: destinationStatus.depositEnabled === true ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : "border-rose-400/20 bg-rose-500/10 text-rose-200",
+  });
+
+  if (hasContractMismatch(sourceStatus, destinationStatus)) {
+    reasons.push({ label: "contract mismatch", tone: "border-rose-400/20 bg-rose-500/10 text-rose-200" });
+  }
+
+  if (matchedNetworks.length > 0) {
+    reasons.push({ label: `network ${matchedNetworks.length}x`, tone: "border-cyan-300/20 bg-cyan-400/10 text-cyan-100" });
+  } else {
+    reasons.push({ label: "network mismatch", tone: "border-amber-300/20 bg-amber-400/10 text-amber-100" });
+  }
+
+  if (hasVerifiedAssetIdentity(sourceStatus, destinationStatus)) {
+    reasons.push({ label: "identity verified", tone: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" });
+  } else {
+    reasons.push({ label: "identity unclear", tone: "border-white/10 bg-slate-900/80 text-slate-400" });
+  }
+
+  return reasons.slice(0, 4);
+}
+
 export default function Home() {
   const [binanceSpotTickers, setBinanceSpotTickers] = useState<NormalizedTicker[]>([]);
   const [binanceFuturesTickers, setBinanceFuturesTickers] = useState<NormalizedTicker[]>([]);
@@ -2182,6 +2227,9 @@ export default function Home() {
                     const crossPrices = getCrossMarketPrices(row.opportunity);
                     const foreignPriceMap = foreignPriceMapBySourceTitle[row.sourceTitle];
                     const foreignPrice = foreignPriceMap?.get(transferSymbol);
+                    const executionReasons = row.transferStatusConfig
+                      ? getExecutionReasons(row.opportunity, leftTransferStatus, rightTransferStatus)
+                      : [];
                     const targetReached = row.opportunity.gapPct >= 5.5;
                     const formatBoardPrice = (exchangeLabel: string, value: number) => {
                       if (row.kind === "perp-perp") return formatOriginalPrice(value, "USDT");
@@ -2214,6 +2262,16 @@ export default function Home() {
                             <div className={`mt-1 text-xs font-medium ${targetReached ? "text-emerald-200/80" : row.opportunity.gapPct >= 0 ? "text-slate-400" : "text-amber-300"}`}>Gap {formatPct(row.opportunity.gapPct)}</div>
                           </div>
                         </div>
+
+                        {executionReasons.length > 0 ? (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {executionReasons.map((reason) => (
+                              <span key={reason.label} className={`rounded-full border px-2.5 py-1 text-[11px] ${reason.tone}`}>
+                                {reason.label}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
 
                         <div className="mt-4 grid gap-3 sm:grid-cols-2">
                           <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
@@ -3220,6 +3278,7 @@ function OpportunitySection({
                 const leftNetworkSummary = formatNetworkSummary(summarizeExecutableNetworks(leftTransferStatus));
                 const rightNetworkSummary = formatNetworkSummary(summarizeExecutableNetworks(rightTransferStatus));
                 const executionStatus = hasTransferStatus ? getExecutionStatus(opportunity, leftTransferStatus, rightTransferStatus) : null;
+                const executionReasons = hasTransferStatus ? getExecutionReasons(opportunity, leftTransferStatus, rightTransferStatus) : [];
                 const routeLabel = getOpportunityRouteLabel(title);
                 const candidateId = getWorkflowCandidate(opportunity, routeLabel).id;
                 const isWorkflowSelected = workflowCandidateId === candidateId;
@@ -3248,6 +3307,16 @@ function OpportunitySection({
                         <div className={`mt-1 text-xs ${opportunity.gapPct >= 0 ? "text-slate-400" : "text-amber-300"}`}>Gap {formatPct(opportunity.gapPct)}</div>
                       </div>
                     </div>
+
+                    {executionReasons.length > 0 ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {executionReasons.map((reason) => (
+                          <span key={reason.label} className={`rounded-full border px-2.5 py-1 text-[11px] ${reason.tone}`}>
+                            {reason.label}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       {marketMode === "internal" ? (
