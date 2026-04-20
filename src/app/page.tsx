@@ -1745,7 +1745,7 @@ export default function Home() {
         <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <SideNavigation activeSection={activeSection} sections={NAVIGATION_SECTIONS} />
           <div className="space-y-8">
-        <header id="overview" className="scroll-mt-24 flex flex-col gap-4 rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-cyan-950/20">
+        <header id="overview" className="scroll-mt-24 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-2xl shadow-cyan-950/20 lg:rounded-[32px] lg:p-6">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.2em] text-cyan-300">GapGaps Live</p>
@@ -1806,7 +1806,7 @@ export default function Home() {
           </a>
         </section>
 
-        <section className="rounded-[32px] border border-cyan-400/15 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),rgba(15,23,42,0.94)_45%,rgba(2,6,23,0.98)_100%)] p-6 shadow-2xl shadow-cyan-950/20">
+        <section className="rounded-[28px] border border-cyan-400/15 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),rgba(15,23,42,0.94)_45%,rgba(2,6,23,0.98)_100%)] p-5 shadow-2xl shadow-cyan-950/20 lg:rounded-[32px] lg:p-6">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_360px]">
             <div className="rounded-[28px] border border-white/10 bg-slate-950/65 p-5">
               <div className="flex flex-wrap items-center gap-2">
@@ -1822,13 +1822,13 @@ export default function Home() {
                         <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-100">실행 가능</span>
                         <span className="rounded-full border border-white/10 bg-slate-900/80 px-2.5 py-1 text-[11px] text-slate-300">{getOpportunityKindLabel(recommendedActionRow.kind)}</span>
                       </div>
-                      <div className="mt-4 text-4xl font-semibold tracking-tight text-white lg:text-5xl">{recommendedActionRow.opportunity.symbol}</div>
+                      <div className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">{recommendedActionRow.opportunity.symbol}</div>
                       <div className="mt-2 text-base text-slate-200 lg:text-lg">{recommendedActionRow.opportunity.buyExchange} → {recommendedActionRow.opportunity.sellExchange}</div>
                       <div className="mt-2 text-sm text-slate-400">지금 바로 확인할 최고 우선 후보. 전송 가능성과 자산 동일성 검증을 통과한 기회만 상단에 올립니다.</div>
                     </div>
                     <div className="rounded-[24px] border border-emerald-300/20 bg-emerald-400/10 px-5 py-4 text-right">
                       <div className="text-[11px] uppercase tracking-[0.2em] text-emerald-100/80">Est. Net</div>
-                      <div className="mt-2 font-mono text-3xl font-semibold text-emerald-200 lg:text-4xl">{formatPct(recommendedActionRow.opportunity.estimatedNetPct)}</div>
+                      <div className="mt-2 font-mono text-2xl font-semibold text-emerald-200 sm:text-3xl lg:text-4xl">{formatPct(recommendedActionRow.opportunity.estimatedNetPct)}</div>
                       <div className="mt-2 text-xs text-emerald-100/70">Gap {formatPct(recommendedActionRow.opportunity.gapPct)}</div>
                     </div>
                   </div>
@@ -1880,7 +1880,7 @@ export default function Home() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="rounded-[28px] border border-white/10 bg-slate-950/55 p-4">
+              <div className="rounded-[24px] border border-white/10 bg-slate-950/55 p-4 lg:rounded-[28px]">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">Status Strip</div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                   <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4">
@@ -1906,7 +1906,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-white/10 bg-slate-950/55 p-4">
+              <div className="rounded-[24px] border border-white/10 bg-slate-950/55 p-4 lg:rounded-[28px]">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">Action Feed</div>
@@ -1951,7 +1951,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-5 lg:p-6">
           <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Opportunity Feed</p>
