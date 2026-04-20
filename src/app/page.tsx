@@ -166,24 +166,6 @@ const TRANSFER_STATUS_POLL_MS = 300_000;
 const ALERT_THRESHOLD_PCT = 1;
 
 
-const CROSS_EXCHANGE_COLUMNS: Array<{ key: OpportunitySortKey; label: string }> = [
-  { key: "symbol", label: "Symbol" },
-  { key: "buyExchange", label: "Buy Exchange" },
-  { key: "sellExchange", label: "Sell Exchange" },
-  { key: "buyPrice", label: "Buy Price" },
-  { key: "sellPrice", label: "Sell Price" },
-  { key: "gapPct", label: "Gap %" },
-  { key: "estimatedNetPct", label: "Estimated Net %" },
-];
-
-const INTERNAL_OPPORTUNITY_COLUMNS = (leftLabel: string, rightLabel: string): Array<{ key: OpportunitySortKey; label: string }> => [
-  { key: "symbol", label: "Symbol" },
-  { key: "spotPrice", label: leftLabel },
-  { key: "futuresPrice", label: rightLabel },
-  { key: "gapPct", label: "Gap %" },
-  { key: "estimatedNetPct", label: "Estimated Net %" },
-];
-
 const MATRIX_COLUMNS: Array<{ key: MatrixSortKey; label: string }> = [
   { key: "base", label: "Coin" },
   { key: "bithumbKrw", label: "Bithumb (KRW)" },
@@ -226,26 +208,6 @@ function getOpportunityRouteLabel(title: string) {
       return "Bithumb -> Solana DEX";
     default:
       return title;
-  }
-}
-
-function opportunityColumnClass(key: OpportunitySortKey) {
-  switch (key) {
-    case "symbol":
-      return "w-[260px]";
-    case "buyExchange":
-    case "sellExchange":
-      return "w-[140px]";
-    case "buyPrice":
-    case "sellPrice":
-    case "spotPrice":
-    case "futuresPrice":
-      return "w-[210px]";
-    case "gapPct":
-    case "estimatedNetPct":
-      return "w-[140px]";
-    default:
-      return "";
   }
 }
 
@@ -3177,13 +3139,11 @@ function OpportunitySection({
   workflowPromotionDisabledReason?: string;
   initialCollapsed?: boolean;
 }) {
-  const [sortConfig, setSortConfig] = useState<SortConfig<OpportunitySortKey>>({ key: "estimatedNetPct", direction: "asc" });
+  const [sortConfig] = useState<SortConfig<OpportunitySortKey>>({ key: "estimatedNetPct", direction: "asc" });
   const [orderLock, setOrderLock] = useState<string[] | null>(null);
   const [collapsed, setCollapsed] = useState(initialCollapsed);
 
-  const columns = marketMode === "cross" ? CROSS_EXCHANGE_COLUMNS : INTERNAL_OPPORTUNITY_COLUMNS(leftMarketLabel, rightMarketLabel);
   const hasTransferStatus = Boolean(transferStatusConfig);
-  const colSpan = marketMode === "cross" ? 7 : 5;
 
   const sortedOpportunities = useMemo(() => {
     if (!orderLock) {
@@ -3234,43 +3194,22 @@ function OpportunitySection({
       </div>
 
       {!collapsed ? (
-        <div className="overflow-hidden rounded-2xl border border-white/10">
-          <table className="min-w-full table-fixed divide-y divide-white/10 text-sm">
-            <thead className="bg-slate-900/70 text-slate-300">
-              <tr>
-                {columns.map((column) => (
-                  <th key={column.key} className={`px-4 py-3 text-left font-medium ${opportunityColumnClass(column.key)}`}>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSortConfig((current) => {
-                          const nextConfig = { key: column.key, direction: nextSortDirection(current, column.key) } satisfies SortConfig<OpportunitySortKey>;
-                          setOrderLock(
-                            sortOpportunityRows(opportunities, nextConfig, marketMode).map(
-                              (item) => `${item.symbol}:${item.buyExchange}:${item.sellExchange}`
-                            )
-                          );
-                          return nextConfig;
-                        })
-                      }
-                      className="inline-flex items-center gap-2 text-left transition hover:text-white"
-                    >
-                      <span>{column.label}</span>
-                      <span className="text-xs text-slate-500">{sortIndicator(sortConfig, column.key)}</span>
-                    </button>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5 bg-slate-950/40">
-              {sortedOpportunities.length === 0 ? (
-                <tr>
-                  <td colSpan={colSpan} className="px-4 py-8 text-center text-slate-400">
-                    {loading ? "시세 데이터를 불러오는 중..." : "현재 조건에 맞는 차익거래 기회가 없습니다."}
-                  </td>
-                </tr>
-              ) : (
-                sortedOpportunities.map((opportunity) => {
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-3 py-3 text-xs text-slate-400">
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">정렬 기준 {sortConfig.key}</span>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">방향 {sortConfig.direction === "asc" ? "오름차순" : "내림차순"}</span>
+            {marketMode === "internal" ? <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">Basis board</span> : null}
+            {marketMode === "krw-cross" ? <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">Domestic/global board</span> : null}
+            {marketMode === "cross" ? <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">Cross-exchange board</span> : null}
+          </div>
+
+          {sortedOpportunities.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-white/10 bg-slate-950/30 px-5 py-10 text-center text-slate-400">
+              {loading ? "시세 데이터를 불러오는 중..." : "현재 조건에 맞는 차익거래 기회가 없습니다."}
+            </div>
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-2">
+              {sortedOpportunities.map((opportunity) => {
                 const { spotPrice, futuresPrice } = getInternalMarketPrices(opportunity);
                 const { krwPrice, spotPrice: foreignSpotKrwPrice } = getCrossMarketPrices(opportunity);
                 const foreignPrice = foreignPriceMap?.get(opportunity.symbol.replace("/KRW", ""));
@@ -3283,114 +3222,129 @@ function OpportunitySection({
                 const routeLabel = getOpportunityRouteLabel(title);
                 const candidateId = getWorkflowCandidate(opportunity, routeLabel).id;
                 const isWorkflowSelected = workflowCandidateId === candidateId;
-                const renderCrossExchangePrice = (exchangeLabel: string, krwPrice: number) => {
-                  const isForeignExchange = exchangeLabel !== "Bithumb Spot" && Boolean(foreignPrice);
-                  if (!isForeignExchange || !foreignPrice) return formatPrice(krwPrice);
-
-                  return `${formatPrice(krwPrice)} (${formatOriginalPrice(foreignPrice.price, foreignPrice.quote)})`;
+                const renderCrossExchangePrice = (exchangeLabel: string, price: number) => {
+                  const isForeignExchange = exchangeLabel !== "Bithumb Spot" && exchangeLabel !== "Upbit Spot" && Boolean(foreignPrice);
+                  if (!isForeignExchange || !foreignPrice) return formatPrice(price);
+                  return `${formatPrice(price)} (${formatOriginalPrice(foreignPrice.price, foreignPrice.quote)})`;
                 };
+
                 return (
-                  <tr
+                  <div
                     key={`${title}-${opportunity.symbol}-${opportunity.buyExchange}-${opportunity.sellExchange}`}
-                    className={`hover:bg-white/5 ${onSelectChart ? "cursor-pointer" : ""}`}
-                    onClick={() => onSelectChart?.(opportunity)}
+                    className="rounded-[28px] border border-white/10 bg-slate-950/35 p-5 transition hover:border-cyan-300/25 hover:bg-slate-900/70"
                   >
-                    <td className="px-4 py-3 font-medium text-white">
-                      <div className="flex flex-col gap-2">
-                        <span>{opportunity.symbol}</span>
-                        {hasTransferStatus ? (
-                          <div className="flex flex-col gap-1 text-xs text-slate-300">
-                            <TransferStatusLine
-                              exchangeLabel={transferStatusConfig?.leftExchangeLabel ?? ""}
-                              status={leftTransferStatus}
-                            />
-                            {transferStatusConfig?.leftNotice ? <TransferNoticeBadge text={transferStatusConfig.leftNotice} /> : null}
-                            <TransferStatusLine
-                              exchangeLabel={transferStatusConfig?.rightExchangeLabel ?? ""}
-                              status={rightTransferStatus}
-                            />
-                            {transferStatusConfig?.rightNotice ? <TransferNoticeBadge text={transferStatusConfig.rightNotice} /> : null}
-                            {onPromoteToWorkflow ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (!workflowPromotionDisabledReason) onPromoteToWorkflow(opportunity);
-                                }}
-                                disabled={Boolean(workflowPromotionDisabledReason)}
-                                className={`mt-1 inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-                                  workflowPromotionDisabledReason
-                                    ? "cursor-not-allowed border-white/10 bg-slate-900/50 text-slate-500"
-                                    : isWorkflowSelected
-                                    ? "border-cyan-300/30 bg-cyan-400/15 text-cyan-100"
-                                    : "border-white/10 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
-                                }`}
-                              >
-                                {workflowPromotionDisabledReason ? workflowPromotionDisabledReason : isWorkflowSelected ? "현재 승인 후보" : "이 후보로 진행"}
-                              </button>
-                            ) : null}
-                          </div>
-                        ) : null}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-semibold text-white">{opportunity.symbol}</span>
+                          {executionStatus ? <span className={`rounded-full border px-2.5 py-1 text-[11px] ${executionStatus.tone}`}>{executionStatus.label}</span> : null}
+                        </div>
+                        <div className="mt-2 text-sm text-slate-200">{opportunity.buyExchange} → {opportunity.sellExchange}</div>
+                        <div className="mt-1 text-xs text-slate-500">{routeLabel}</div>
                       </div>
-                    </td>
-                    {marketMode === "internal" ? (
-                      <>
-                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{formatPrice(spotPrice)}</td>
-                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{formatPrice(futuresPrice)}</td>
-                        <td className={`px-4 py-3 font-mono tabular-nums font-medium ${opportunity.gapPct >= 0 ? "text-emerald-300" : "text-amber-300"}`}>{formatPct(opportunity.gapPct)}</td>
-                        <td className={`px-4 py-3 font-mono tabular-nums font-semibold ${opportunity.estimatedNetPct > 0 ? "text-emerald-400" : "text-rose-300"}`}>
-                          {formatPct(opportunity.estimatedNetPct)}
-                        </td>
-                      </>
-                    ) : marketMode === "krw-cross" ? (
-                      <>
-                        <td className="px-4 py-3 text-slate-300">
-                          <div className="font-mono tabular-nums">{formatPrice(krwPrice)}</div>
-                          {hasTransferStatus ? (
-                            <>
-                              <div className="mt-1 text-[11px] text-slate-500">{transferStatusConfig?.leftExchangeLabel} 네트워크: {leftNetworkSummary}</div>
-                              {executionStatus ? <div className={`mt-2 inline-flex rounded-full border px-2 py-1 text-[11px] font-medium ${executionStatus.tone}`}>{executionStatus.label}</div> : null}
-                            </>
-                          ) : null}
-                        </td>
-                        <td className="px-4 py-3 text-slate-300">
-                          <div className="font-mono tabular-nums">
-                            {foreignPrice ? `${formatPrice(foreignSpotKrwPrice)} (${formatOriginalPrice(foreignPrice.price, foreignPrice.quote)})` : formatPrice(foreignSpotKrwPrice)}
+                      <div className="text-right">
+                        <div className={`font-mono text-2xl font-semibold ${opportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-rose-300"}`}>{formatPct(opportunity.estimatedNetPct)}</div>
+                        <div className={`mt-1 text-xs ${opportunity.gapPct >= 0 ? "text-slate-400" : "text-amber-300"}`}>Gap {formatPct(opportunity.gapPct)}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {marketMode === "internal" ? (
+                        <>
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{leftMarketLabel}</div>
+                            <div className="mt-2 text-xs text-slate-400">{opportunity.buyExchange}</div>
+                            <div className="mt-1 font-mono text-sm text-white">{formatPrice(spotPrice)}</div>
                           </div>
-                          {hasTransferStatus ? <div className="mt-1 text-[11px] text-slate-500">{transferStatusConfig?.rightExchangeLabel} 네트워크: {rightNetworkSummary}</div> : null}
-                          {transferStatusConfig?.rightNotice ? <div className="mt-2"><TransferNoticeBadge text={transferStatusConfig.rightNotice} /></div> : null}
-                          {foreignPrice?.dexId ? (
-                            <div className="mt-1 text-[11px] text-slate-500">
-                              DEX: {foreignPrice.dexId}
-                              {formatLiquidityUsd(foreignPrice.liquidityUsd) ? ` · 유동성 ${formatLiquidityUsd(foreignPrice.liquidityUsd)}` : ""}
-                            </div>
-                          ) : null}
-                          {foreignPrice?.tokenAddress ? (
-                            <div className="mt-1 text-[11px] text-slate-500">민트: {formatShortAddress(foreignPrice.tokenAddress)}</div>
-                          ) : null}
-                        </td>
-                        <td className={`px-4 py-3 font-mono tabular-nums font-medium ${opportunity.gapPct >= 0 ? "text-emerald-300" : "text-amber-300"}`}>{formatPct(opportunity.gapPct)}</td>
-                        <td className={`px-4 py-3 font-mono tabular-nums font-semibold ${opportunity.estimatedNetPct > 0 ? "text-emerald-400" : "text-rose-300"}`}>
-                          {formatPct(opportunity.estimatedNetPct)}
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-4 py-3 text-slate-300">{opportunity.buyExchange}</td>
-                        <td className="px-4 py-3 text-slate-300">{opportunity.sellExchange}</td>
-                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{renderCrossExchangePrice(opportunity.buyExchange, opportunity.buyPrice)}</td>
-                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{renderCrossExchangePrice(opportunity.sellExchange, opportunity.sellPrice)}</td>
-                        <td className={`px-4 py-3 font-mono tabular-nums font-medium ${opportunity.gapPct >= 0 ? "text-emerald-300" : "text-amber-300"}`}>{formatPct(opportunity.gapPct)}</td>
-                        <td className={`px-4 py-3 font-mono tabular-nums font-semibold ${opportunity.estimatedNetPct > 0 ? "text-emerald-400" : "text-rose-300"}`}>
-                          {formatPct(opportunity.estimatedNetPct)}
-                        </td>
-                      </>
-                    )}
-                  </tr>
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{rightMarketLabel}</div>
+                            <div className="mt-2 text-xs text-slate-400">{opportunity.sellExchange}</div>
+                            <div className="mt-1 font-mono text-sm text-white">{formatPrice(futuresPrice)}</div>
+                          </div>
+                        </>
+                      ) : marketMode === "krw-cross" ? (
+                        <>
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Buy leg</div>
+                            <div className="mt-2 text-xs text-slate-400">{opportunity.buyExchange}</div>
+                            <div className="mt-1 font-mono text-sm text-white">{formatPrice(krwPrice)}</div>
+                            {hasTransferStatus ? <div className="mt-1 text-[11px] text-slate-500">{transferStatusConfig?.leftExchangeLabel} 네트워크: {leftNetworkSummary}</div> : null}
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Sell leg</div>
+                            <div className="mt-2 text-xs text-slate-400">{opportunity.sellExchange}</div>
+                            <div className="mt-1 font-mono text-sm text-white">{foreignPrice ? `${formatPrice(foreignSpotKrwPrice)} (${formatOriginalPrice(foreignPrice.price, foreignPrice.quote)})` : formatPrice(foreignSpotKrwPrice)}</div>
+                            {hasTransferStatus ? <div className="mt-1 text-[11px] text-slate-500">{transferStatusConfig?.rightExchangeLabel} 네트워크: {rightNetworkSummary}</div> : null}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Buy exchange</div>
+                            <div className="mt-2 text-xs text-slate-400">{opportunity.buyExchange}</div>
+                            <div className="mt-1 font-mono text-sm text-white">{renderCrossExchangePrice(opportunity.buyExchange, opportunity.buyPrice)}</div>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Sell exchange</div>
+                            <div className="mt-2 text-xs text-slate-400">{opportunity.sellExchange}</div>
+                            <div className="mt-1 font-mono text-sm text-white">{renderCrossExchangePrice(opportunity.sellExchange, opportunity.sellPrice)}</div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {hasTransferStatus ? (
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300">
+                        <div className="flex flex-col gap-2">
+                          <TransferStatusLine exchangeLabel={transferStatusConfig?.leftExchangeLabel ?? ""} status={leftTransferStatus} />
+                          {transferStatusConfig?.leftNotice ? <TransferNoticeBadge text={transferStatusConfig.leftNotice} /> : null}
+                          <TransferStatusLine exchangeLabel={transferStatusConfig?.rightExchangeLabel ?? ""} status={rightTransferStatus} />
+                          {transferStatusConfig?.rightNotice ? <TransferNoticeBadge text={transferStatusConfig.rightNotice} /> : null}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {(foreignPrice?.dexId || foreignPrice?.tokenAddress) && marketMode === "krw-cross" ? (
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[11px] text-slate-500">
+                        {foreignPrice?.dexId ? <div>DEX: {foreignPrice.dexId}{formatLiquidityUsd(foreignPrice.liquidityUsd) ? ` · 유동성 ${formatLiquidityUsd(foreignPrice.liquidityUsd)}` : ""}</div> : null}
+                        {foreignPrice?.tokenAddress ? <div className="mt-1">민트: {formatShortAddress(foreignPrice.tokenAddress)}</div> : null}
+                      </div>
+                    ) : null}
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      {onSelectChart ? (
+                        <button
+                          type="button"
+                          onClick={() => onSelectChart(opportunity)}
+                          className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+                        >
+                          차트 보기
+                        </button>
+                      ) : null}
+                      {onPromoteToWorkflow ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!workflowPromotionDisabledReason) onPromoteToWorkflow(opportunity);
+                          }}
+                          disabled={Boolean(workflowPromotionDisabledReason)}
+                          className={`rounded-full border px-3 py-2 text-xs font-medium transition ${
+                            workflowPromotionDisabledReason
+                              ? "cursor-not-allowed border-white/10 bg-slate-900/50 text-slate-500"
+                              : isWorkflowSelected
+                              ? "border-cyan-300/30 bg-cyan-400/15 text-cyan-100"
+                              : "border-white/10 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
+                          }`}
+                        >
+                          {workflowPromotionDisabledReason ? workflowPromotionDisabledReason : isWorkflowSelected ? "현재 승인 후보" : "이 후보로 진행"}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
                 );
-                })
-              )}
-            </tbody>
-          </table>
+              })}
+            </div>
+          )}
         </div>
       ) : (
         <CollapsedSummary
