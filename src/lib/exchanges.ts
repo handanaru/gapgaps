@@ -360,6 +360,44 @@ export function normalizeGateIoPerpTickers(
   return result;
 }
 
+export function normalizeHyperliquidPerpTickers(
+  raw: {
+    universe?: Array<{ name: string }>;
+    assetCtxs?: Array<{ midPx?: string; oraclePx?: string; markPx?: string; dayNtlVlm?: string }>;
+  }
+): NormalizedTicker[] {
+  const result: NormalizedTicker[] = [];
+
+  const universe = raw.universe ?? [];
+
+  for (let index = 0; index < universe.length; index += 1) {
+    const asset = universe[index];
+    const ctx = raw.assetCtxs?.[index];
+    if (!asset?.name || !ctx) continue;
+
+    const base = asset.name.trim().toUpperCase();
+    const price = Number(ctx.midPx ?? ctx.markPx ?? ctx.oraclePx);
+    if (!base || !Number.isFinite(price) || price <= 0) continue;
+
+    const volume24h = Number(ctx.dayNtlVlm);
+
+    result.push({
+      exchange: "Hyperliquid",
+      marketType: "perp",
+      symbol: `${base}USDC`,
+      base,
+      quote: "USDC",
+      price,
+      bidPrice: price,
+      askPrice: price,
+      volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
+      timestamp: Date.now(),
+    });
+  }
+
+  return result;
+}
+
 function getExecutableBuyPrice(ticker: NormalizedTicker, quoteToKrw = 1) {
   return (ticker.askPrice ?? ticker.price) * (ticker.quote === "KRW" ? 1 : quoteToKrw);
 }
