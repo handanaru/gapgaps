@@ -1323,6 +1323,35 @@ export default function Home() {
     .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
     .filter((item) => !isBlockedExchangePairSymbolByLabel(item.buyExchange, item.sellExchange, item.symbol))
     .slice(0, 15);
+  const perpDexBoardCards = [
+    {
+      id: "hyperliquid",
+      title: "Hyperliquid",
+      routeLabel: "Binance ↔ Hyperliquid",
+      description: "오더북 기반 perp DEX 비교",
+      href: "#perp-binance-hyperliquid",
+      opportunities: topBinanceHyperliquidPerp,
+      sourceLabel: "Hyperliquid Perp",
+    },
+    {
+      id: "edgex",
+      title: "EdgeX",
+      routeLabel: "Binance ↔ EdgeX",
+      description: "metadata + depth 기반 perp DEX 비교",
+      href: "#perp-binance-edgex",
+      opportunities: topBinanceEdgeXPerp,
+      sourceLabel: "EdgeX Perp",
+    },
+    {
+      id: "aster",
+      title: "Aster",
+      routeLabel: "Binance ↔ Aster",
+      description: "symbol-config + mark price 기반 perp DEX 비교",
+      href: "#perp-binance-aster",
+      opportunities: topBinanceAsterPerp,
+      sourceLabel: "Aster Perp",
+    },
+  ] as const;
   const topCrossExchange = bithumbOkxOpportunities
     .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
     .filter((item) => isTransferReadyForOpportunity(item, bithumbTransferStatus))
@@ -2708,6 +2737,63 @@ export default function Home() {
           title="선선 갭 보드"
           description="거래소 간 선물 가격 차이를 비교하는 영역입니다. 같은 코인의 무기한 계약 가격 괴리를 실행 기준으로 먼저 확인합니다."
         >
+          <section className="mb-5 rounded-[28px] border border-cyan-300/15 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(15,23,42,0.94)_42%,rgba(2,6,23,0.98)_100%)] p-5 shadow-xl shadow-cyan-950/10">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Perp DEX Board</p>
+                <h3 className="mt-2 text-xl font-semibold text-white">온체인 perp DEX 묶음 보드</h3>
+                <p className="mt-1 text-sm text-slate-400">Hyperliquid, EdgeX, Aster를 각각 따로 찾지 않아도 되도록 Binance 기준 perp DEX 비교 라인을 한 번에 모았습니다.</p>
+              </div>
+              <div className="text-xs text-slate-500">DEX 3종 통합 보기</div>
+            </div>
+
+            <div className="mt-4 grid gap-4 xl:grid-cols-3">
+              {perpDexBoardCards.map((card) => {
+                const topOpportunity = card.opportunities[0] ?? null;
+                return (
+                  <a
+                    key={card.id}
+                    href={card.href}
+                    className="group rounded-[24px] border border-white/10 bg-slate-950/50 p-4 transition hover:border-cyan-300/30 hover:bg-slate-900/80"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-semibold text-white">{card.title}</span>
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">{card.sourceLabel}</span>
+                        </div>
+                        <div className="mt-1 text-sm text-slate-300">{card.routeLabel}</div>
+                        <div className="mt-2 text-xs text-slate-500">{card.description}</div>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Candidates</div>
+                        <div className="mt-1 font-mono text-lg font-semibold text-white">{card.opportunities.length}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Top symbol</div>
+                        <div className="mt-1 text-sm font-medium text-white">{topOpportunity?.symbol ?? "없음"}</div>
+                        <div className="mt-1 text-[11px] text-slate-500">{topOpportunity ? `${topOpportunity.buyExchange} → ${topOpportunity.sellExchange}` : "현재 조건에서 후보 없음"}</div>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-right">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Best net</div>
+                        <div className={`mt-1 font-mono text-lg font-semibold ${topOpportunity && topOpportunity.estimatedNetPct > 0 ? "text-emerald-300" : "text-slate-400"}`}>{topOpportunity ? formatPct(topOpportunity.estimatedNetPct) : "-"}</div>
+                        <div className="mt-1 text-[11px] text-slate-500">{topOpportunity ? `Gap ${formatPct(topOpportunity.gapPct)}` : "대기 중"}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs">
+                      <span className="text-slate-500">개별 보드로 이동</span>
+                      <span className="text-cyan-200 transition group-hover:translate-x-0.5">열기 →</span>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-300/15 bg-slate-950/60 px-3 py-3">
             <span className="text-xs font-medium text-slate-400">바로가기</span>
             {[
