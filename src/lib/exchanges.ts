@@ -398,6 +398,64 @@ export function normalizeHyperliquidPerpTickers(
   return result;
 }
 
+export function normalizeAsterPerpTickers(
+  raw: {
+    symbolConfig?: Array<{
+      symbol: string;
+      symbolName: string;
+      quoteAsset: string;
+      baseAsset: string;
+      priceDecimal?: string;
+      baseDecimal?: string;
+      address?: string;
+    }>;
+    markPriceTickers?: Array<{
+      symbol: string;
+      lastPrice: string;
+      openPrice?: string;
+      highPrice?: string;
+      lowPrice?: string;
+      volume?: string;
+      baseVolume?: string;
+      quoteVolume?: string;
+    }>;
+  }
+): NormalizedTicker[] {
+  const result: NormalizedTicker[] = [];
+  const tickerBySymbol = new Map((raw.markPriceTickers ?? []).map((ticker) => [ticker.symbol, ticker]));
+
+  for (const item of raw.symbolConfig ?? []) {
+    const ticker = tickerBySymbol.get(item.symbol) ?? tickerBySymbol.get(item.symbolName);
+    if (!item?.symbolName || !item.baseAsset || !item.quoteAsset || !ticker) continue;
+
+    const price = Number(ticker.lastPrice);
+    if (!Number.isFinite(price) || price <= 0) continue;
+
+    const bidAskFallback = price;
+    const volume24h = Number(ticker.quoteVolume);
+
+    result.push({
+      exchange: "Aster",
+      marketType: "perp",
+      symbol: `${item.baseAsset.toUpperCase()}${item.quoteAsset.toUpperCase()}`,
+      base: item.baseAsset.toUpperCase(),
+      quote: item.quoteAsset.toUpperCase(),
+      price,
+      bidPrice: bidAskFallback,
+      askPrice: bidAskFallback,
+      volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
+      metadata: {
+        dexId: "aster",
+        pairAddress: item.address,
+        sourceUrl: `https://www.asterdex.com/en/trade/pro/futures/${item.symbolName}`,
+      },
+      timestamp: Date.now(),
+    });
+  }
+
+  return result;
+}
+
 export function normalizeEdgeXPerpTickers(raw: {
   coinList?: Array<{ coinId: string; coinName: string }>;
   contractList?: Array<{
