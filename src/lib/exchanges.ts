@@ -398,6 +398,57 @@ export function normalizeHyperliquidPerpTickers(
   return result;
 }
 
+export function normalizeEdgeXPerpTickers(raw: {
+  coinList?: Array<{ coinId: string; coinName: string }>;
+  contractList?: Array<{
+    contractId: string;
+    contractName: string;
+    baseCoinId: string;
+    quoteCoinId: string;
+    enableTrade?: boolean;
+    enableDisplay?: boolean;
+  }>;
+  depthByContractId?: Record<string, { contractId?: string; bids?: Array<{ price?: string }>; asks?: Array<{ price?: string }> }>;
+}): NormalizedTicker[] {
+  const result: NormalizedTicker[] = [];
+  const coinNameById = new Map((raw.coinList ?? []).map((coin) => [coin.coinId, coin.coinName?.trim().toUpperCase()]));
+
+  for (const contract of raw.contractList ?? []) {
+    if (!contract?.contractId || !contract.contractName || contract.enableTrade !== true || contract.enableDisplay === false) continue;
+
+    const base = coinNameById.get(contract.baseCoinId);
+    const quote = coinNameById.get(contract.quoteCoinId);
+    if (!base || !quote) continue;
+
+    const depth = raw.depthByContractId?.[contract.contractId];
+    const bestBid = Number(depth?.bids?.[0]?.price);
+    const bestAsk = Number(depth?.asks?.[0]?.price);
+    const price = Number.isFinite(bestBid) && Number.isFinite(bestAsk) && bestBid > 0 && bestAsk > 0
+      ? (bestBid + bestAsk) / 2
+      : Number.isFinite(bestBid) && bestBid > 0
+      ? bestBid
+      : Number.isFinite(bestAsk) && bestAsk > 0
+      ? bestAsk
+      : NaN;
+
+    if (!Number.isFinite(price) || price <= 0) continue;
+
+    result.push({
+      exchange: "EdgeX",
+      marketType: "perp",
+      symbol: `${base}${quote}`,
+      base,
+      quote,
+      price,
+      bidPrice: Number.isFinite(bestBid) && bestBid > 0 ? bestBid : undefined,
+      askPrice: Number.isFinite(bestAsk) && bestAsk > 0 ? bestAsk : undefined,
+      timestamp: Date.now(),
+    });
+  }
+
+  return result;
+}
+
 function getExecutableBuyPrice(ticker: NormalizedTicker, quoteToKrw = 1) {
   return (ticker.askPrice ?? ticker.price) * (ticker.quote === "KRW" ? 1 : quoteToKrw);
 }

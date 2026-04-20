@@ -296,6 +296,7 @@ function getRowTargetId(row: AggregatedOpportunityRow) {
   if (row.sourceTitle === "Binance Perp vs Bybit Perp") return "perp-binance-bybit";
   if (row.sourceTitle === "Binance Perp vs Gate.io Perp") return "perp-binance-gateio";
   if (row.sourceTitle === "Binance Perp vs Hyperliquid Perp") return "perp-binance-hyperliquid";
+  if (row.sourceTitle === "Binance Perp vs EdgeX Perp") return "perp-binance-edgex";
   if (row.sourceTitle === "OKX Swap vs Bybit Perp") return "perp-okx-bybit";
   if (row.sourceTitle === "OKX Swap vs Gate.io Perp") return "perp-okx-gateio";
   if (row.sourceTitle === "Bybit Perp vs Gate.io Perp") return "perp-bybit-gateio";
@@ -319,6 +320,7 @@ function getTradingViewSymbol(exchangeLabel: string, symbol: string) {
   if (exchangeLabel === "Gate.io Spot") return `GATEIO:${usdtSymbol}`;
   if (exchangeLabel === "Gate.io Perp") return `GATEIO:${usdtSymbol}.P`;
   if (exchangeLabel === "Hyperliquid Perp") return null;
+  if (exchangeLabel === "EdgeX Perp") return null;
   if (exchangeLabel === "Bithumb Spot") return `BITHUMB:${base}KRW`;
   if (exchangeLabel === "Upbit Spot") return `UPBIT:${base}KRW`;
 
@@ -720,6 +722,7 @@ export default function Home() {
   const [gateIoSpotTickers, setGateIoSpotTickers] = useState<NormalizedTicker[]>([]);
   const [gateIoPerpTickers, setGateIoPerpTickers] = useState<NormalizedTicker[]>([]);
   const [hyperliquidPerpTickers, setHyperliquidPerpTickers] = useState<NormalizedTicker[]>([]);
+  const [edgeXPerpTickers, setEdgeXPerpTickers] = useState<NormalizedTicker[]>([]);
   const [solanaDexTickers, setSolanaDexTickers] = useState<NormalizedTicker[]>([]);
   const [usdtKrwRate, setUsdtKrwRate] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
@@ -766,7 +769,7 @@ export default function Home() {
 
     const poll = async () => {
       try {
-        const [binanceSpotRes, binanceFuturesRes, bithumbRes, upbitRes, okxRes, okxPerpRes, bybitRes, bybitPerpRes, gateIoRes, gateIoPerpRes, hyperliquidPerpRes, solanaDexRes, fxRes] = await Promise.all([
+        const [binanceSpotRes, binanceFuturesRes, bithumbRes, upbitRes, okxRes, okxPerpRes, bybitRes, bybitPerpRes, gateIoRes, gateIoPerpRes, hyperliquidPerpRes, edgeXPerpRes, solanaDexRes, fxRes] = await Promise.all([
           fetch("/api/binance/spot"),
           fetch("/api/binance/perp"),
           fetch("/api/bithumb/spot"),
@@ -778,11 +781,12 @@ export default function Home() {
           fetch("/api/gateio/spot"),
           fetch("/api/gateio/perp"),
           fetch("/api/hyperliquid/perp"),
+          fetch("/api/edgex/perp"),
           fetch("/api/dex/solana"),
           fetch("/api/fx/usdt-krw"),
         ]);
 
-        const [binanceSpotJson, binanceFuturesJson, bithumbJson, upbitJson, okxJson, okxPerpJson, bybitJson, bybitPerpJson, gateIoJson, gateIoPerpJson, hyperliquidPerpJson, solanaDexJson, fxJson] = await Promise.all([
+        const [binanceSpotJson, binanceFuturesJson, bithumbJson, upbitJson, okxJson, okxPerpJson, bybitJson, bybitPerpJson, gateIoJson, gateIoPerpJson, hyperliquidPerpJson, edgeXPerpJson, solanaDexJson, fxJson] = await Promise.all([
           parseJsonResponse<ApiResponse>(binanceSpotRes, "Binance spot"),
           parseJsonResponse<ApiResponse>(binanceFuturesRes, "Binance perp"),
           parseJsonResponse<ApiResponse>(bithumbRes, "Bithumb spot"),
@@ -794,6 +798,7 @@ export default function Home() {
           parseJsonResponse<ApiResponse>(gateIoRes, "Gate.io spot"),
           parseJsonResponse<ApiResponse>(gateIoPerpRes, "Gate.io perp"),
           parseJsonResponse<ApiResponse>(hyperliquidPerpRes, "Hyperliquid perp"),
+          parseJsonResponse<ApiResponse>(edgeXPerpRes, "EdgeX perp"),
           parseJsonResponse<ApiResponse>(solanaDexRes, "Solana DEX"),
           parseJsonResponse<FxResponse>(fxRes, "USDT/KRW"),
         ]);
@@ -809,6 +814,7 @@ export default function Home() {
           !gateIoJson.success ||
           !gateIoPerpJson.success ||
           !hyperliquidPerpJson.success ||
+          !edgeXPerpJson.success ||
           !solanaDexJson.success ||
           !fxJson.success ||
           !binanceSpotJson.data ||
@@ -821,6 +827,7 @@ export default function Home() {
           !gateIoJson.data ||
           !gateIoPerpJson.data ||
           !hyperliquidPerpJson.data ||
+          !edgeXPerpJson.data ||
           !solanaDexJson.data ||
           !fxJson.data
         ) {
@@ -835,6 +842,7 @@ export default function Home() {
               gateIoJson.error ||
               gateIoPerpJson.error ||
               hyperliquidPerpJson.error ||
+              edgeXPerpJson.error ||
               solanaDexJson.error ||
               fxJson.error ||
               "시세 데이터를 불러오지 못했습니다."
@@ -855,6 +863,7 @@ export default function Home() {
           setGateIoSpotTickers(gateIoJson.data);
           setGateIoPerpTickers(gateIoPerpJson.data);
           setHyperliquidPerpTickers(hyperliquidPerpJson.data);
+          setEdgeXPerpTickers(edgeXPerpJson.data);
           setSolanaDexTickers(solanaDexJson.data);
           setUsdtKrwRate(fxJson.data.rate);
           setLastUpdated(
@@ -870,6 +879,7 @@ export default function Home() {
               gateIoJson.fetchedAt ?? 0,
               gateIoPerpJson.fetchedAt ?? 0,
               hyperliquidPerpJson.fetchedAt ?? 0,
+              edgeXPerpJson.fetchedAt ?? 0,
               solanaDexJson.fetchedAt ?? 0,
               fxJson.fetchedAt ?? 0
             )
@@ -1235,6 +1245,15 @@ export default function Home() {
       rightQuoteToKrw: usdtKrwRate ?? undefined,
     });
   }, [binanceFuturesTickers, hyperliquidPerpTickers, binanceFeePct, usdtKrwRate]);
+  const binanceEdgeXPerpOpportunities = useMemo<ArbitrageOpportunity[]>(() => {
+    return calculateCrossExchangeArbitrage(binanceFuturesTickers, edgeXPerpTickers, {
+      leftFeePct: binanceFeePct,
+      rightFeePct: 0.05,
+      leftLabel: "Binance Perp",
+      rightLabel: "EdgeX Perp",
+      rightQuoteToKrw: usdtKrwRate ?? undefined,
+    });
+  }, [binanceFuturesTickers, edgeXPerpTickers, binanceFeePct, usdtKrwRate]);
 
   const topBinance = binanceInternalOpportunities.slice(0, 15);
   const topOkx = okxInternalOpportunities.slice(0, 15);
@@ -1257,6 +1276,10 @@ export default function Home() {
     .filter((item) => !isBlockedExchangePairSymbolByLabel(item.buyExchange, item.sellExchange, item.symbol))
     .slice(0, 15);
   const topBinanceHyperliquidPerp = binanceHyperliquidPerpOpportunities
+    .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
+    .filter((item) => !isBlockedExchangePairSymbolByLabel(item.buyExchange, item.sellExchange, item.symbol))
+    .slice(0, 15);
+  const topBinanceEdgeXPerp = binanceEdgeXPerpOpportunities
     .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
     .filter((item) => !isBlockedExchangePairSymbolByLabel(item.buyExchange, item.sellExchange, item.symbol))
     .slice(0, 15);
@@ -1530,6 +1553,7 @@ export default function Home() {
     pushRows("perp-perp", "Binance Perp vs Bybit Perp", topPerpPerpBybit);
     pushRows("perp-perp", "Binance Perp vs Gate.io Perp", topPerpPerpGateIo);
     pushRows("perp-perp", "Binance Perp vs Hyperliquid Perp", topBinanceHyperliquidPerp);
+    pushRows("perp-perp", "Binance Perp vs EdgeX Perp", topBinanceEdgeXPerp);
     pushRows("perp-perp", "OKX Swap vs Bybit Perp", topOkxBybitPerp);
     pushRows("perp-perp", "OKX Swap vs Gate.io Perp", topOkxGateIoPerp);
     pushRows("perp-perp", "Bybit Perp vs Gate.io Perp", topBybitGateIoPerp);
@@ -1605,6 +1629,7 @@ export default function Home() {
     topPerpPerpBybit,
     topPerpPerpGateIo,
     topBinanceHyperliquidPerp,
+    topBinanceEdgeXPerp,
     topOkxBybitPerp,
     topOkxGateIoPerp,
     topBybitGateIoPerp,
@@ -2635,6 +2660,7 @@ export default function Home() {
               { href: '#perp-binance-bybit', label: 'Binance ↔ Bybit' },
               { href: '#perp-binance-gateio', label: 'Binance ↔ Gate.io' },
               { href: '#perp-binance-hyperliquid', label: 'Binance ↔ Hyperliquid' },
+              { href: '#perp-binance-edgex', label: 'Binance ↔ EdgeX' },
               { href: '#perp-okx-bybit', label: 'OKX ↔ Bybit' },
               { href: '#perp-okx-gateio', label: 'OKX ↔ Gate.io' },
               { href: '#perp-bybit-gateio', label: 'Bybit ↔ Gate.io' },
@@ -2689,6 +2715,17 @@ export default function Home() {
               loading={loading}
               marketMode="cross"
               onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Binance Perp vs Hyperliquid Perp", opportunity))}
+              initialCollapsed
+            />
+          </div>
+          <div id="perp-binance-edgex" className="scroll-mt-28">
+            <OpportunitySection
+              title="Binance Perp vs EdgeX Perp"
+              description="바이낸스 무기한 선물과 EdgeX perp DEX 호가(mid) 기반 가격 차이를 비교합니다. EdgeX는 공개 metadata + depth API를 통해 1차 feed를 구성했습니다."
+              opportunities={topBinanceEdgeXPerp}
+              loading={loading}
+              marketMode="cross"
+              onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Binance Perp vs EdgeX Perp", opportunity))}
               initialCollapsed
             />
           </div>
