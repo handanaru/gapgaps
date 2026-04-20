@@ -310,7 +310,7 @@ function getTradingViewSymbol(exchangeLabel: string, symbol: string) {
   const usdtSymbol = `${base}USDT`;
 
   if (exchangeLabel === "Binance Spot") return `BINANCE:${usdtSymbol}`;
-  if (exchangeLabel === "Binance Futures" || exchangeLabel === "Binance Perp") return `BINANCE:${usdtSymbol}.P`;
+  if (exchangeLabel === "Binance Futures" || exchangeLabel === "Binance Perp") return `BINANCE:${usdtSymbol}PERP`;
   if (exchangeLabel === "OKX Spot") return `OKX:${usdtSymbol}`;
   if (exchangeLabel === "OKX Perp" || exchangeLabel === "OKX Swap") return `OKX:${usdtSymbol}.P`;
   if (exchangeLabel === "Bybit Spot") return `BYBIT:${usdtSymbol}`;
