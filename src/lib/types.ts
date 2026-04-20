@@ -17,6 +17,10 @@ export type NormalizedTicker = {
     tokenAddress?: string;
     liquidityUsd?: number;
     sourceUrl?: string;
+    fundingBaseRate?: number;
+    takerFeeRate?: number;
+    makerFeeRate?: number;
+    maxLeverage?: number;
   };
   timestamp: number;
 };

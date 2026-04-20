@@ -708,6 +708,23 @@ function getConfidenceReasons(leftNotice?: string, rightNotice?: string) {
   return reasons;
 }
 
+function getEdgeXContextReasons(ticker: NormalizedTicker | undefined) {
+  const reasons: Array<{ label: string; tone: string }> = [];
+  if (!ticker?.metadata) return reasons;
+
+  if (Number.isFinite(ticker.metadata.maxLeverage)) {
+    reasons.push({ label: `edgex ${Number(ticker.metadata.maxLeverage)}x`, tone: "border-cyan-300/20 bg-cyan-400/10 text-cyan-100" });
+  }
+  if (Number.isFinite(ticker.metadata.takerFeeRate)) {
+    reasons.push({ label: `taker ${(Number(ticker.metadata.takerFeeRate) * 100).toFixed(3)}%`, tone: "border-white/10 bg-slate-900/80 text-slate-300" });
+  }
+  if (Number.isFinite(ticker.metadata.fundingBaseRate)) {
+    reasons.push({ label: `int ${(Number(ticker.metadata.fundingBaseRate) * 100).toFixed(3)}%`, tone: "border-amber-300/20 bg-amber-400/10 text-amber-100" });
+  }
+
+  return reasons.slice(0, 3);
+}
+
 export default function Home() {
   const [binanceSpotTickers, setBinanceSpotTickers] = useState<NormalizedTicker[]>([]);
   const [binanceFuturesTickers, setBinanceFuturesTickers] = useState<NormalizedTicker[]>([]);
@@ -1464,6 +1481,10 @@ export default function Home() {
       ])
     );
   }, [solanaDexTickers]);
+
+  const edgeXPerpMap = useMemo(() => {
+    return new Map(edgeXPerpTickers.map((ticker) => [ticker.base, ticker]));
+  }, [edgeXPerpTickers]);
 
   const solanaDexTransferStatus = useMemo<TransferStatusMap>(() => {
     return solanaDexTickers.reduce<TransferStatusMap>((acc, ticker) => {
@@ -2300,6 +2321,10 @@ export default function Home() {
                       ? getExecutionReasons(row.opportunity, leftTransferStatus, rightTransferStatus)
                       : [];
                     const confidenceReasons = getConfidenceReasons(row.transferStatusConfig?.leftNotice, row.transferStatusConfig?.rightNotice);
+                    const edgeXBase = transferSymbol.replace(/(USDT|USDC|USD|KRW)$/, "");
+                    const edgeXContextReasons = row.opportunity.buyExchange === "EdgeX Perp" || row.opportunity.sellExchange === "EdgeX Perp"
+                      ? getEdgeXContextReasons(edgeXPerpMap.get(edgeXBase))
+                      : [];
                     const targetReached = row.opportunity.gapPct >= 5.5;
                     const formatBoardPrice = (exchangeLabel: string, value: number) => {
                       if (row.kind === "perp-perp") return formatOriginalPrice(value, "USDT");
@@ -2333,7 +2358,7 @@ export default function Home() {
                           </div>
                         </div>
 
-                        {executionReasons.length > 0 || confidenceReasons.length > 0 ? (
+                        {executionReasons.length > 0 || confidenceReasons.length > 0 || edgeXContextReasons.length > 0 ? (
                           <div className="mt-4 flex flex-wrap gap-2">
                             {executionReasons.map((reason) => (
                               <span key={reason.label} className={`rounded-full border px-2.5 py-1 text-[11px] ${reason.tone}`}>
@@ -2341,6 +2366,11 @@ export default function Home() {
                               </span>
                             ))}
                             {confidenceReasons.map((reason) => (
+                              <span key={reason.label} className={`rounded-full border px-2.5 py-1 text-[11px] ${reason.tone}`}>
+                                {reason.label}
+                              </span>
+                            ))}
+                            {edgeXContextReasons.map((reason) => (
                               <span key={reason.label} className={`rounded-full border px-2.5 py-1 text-[11px] ${reason.tone}`}>
                                 {reason.label}
                               </span>
@@ -2725,6 +2755,7 @@ export default function Home() {
               opportunities={topBinanceEdgeXPerp}
               loading={loading}
               marketMode="cross"
+              edgeXPerpMap={edgeXPerpMap}
               onSelectChart={(opportunity) => setSelectedChart(getChartSelection("Binance Perp vs EdgeX Perp", opportunity))}
               initialCollapsed
             />
@@ -3272,6 +3303,7 @@ function OpportunitySection({
   onSelectChart,
   transferStatusConfig,
   workflowPromotionDisabledReason,
+  edgeXPerpMap,
   initialCollapsed = false,
 }: {
   title: string;
@@ -3294,6 +3326,7 @@ function OpportunitySection({
     rightNotice?: string;
   };
   workflowPromotionDisabledReason?: string;
+  edgeXPerpMap?: Map<string, NormalizedTicker>;
   initialCollapsed?: boolean;
 }) {
   const [sortConfig] = useState<SortConfig<OpportunitySortKey>>({ key: "estimatedNetPct", direction: "asc" });
@@ -3379,6 +3412,10 @@ function OpportunitySection({
                 const executionStatus = hasTransferStatus ? getExecutionStatus(opportunity, leftTransferStatus, rightTransferStatus) : null;
                 const executionReasons = hasTransferStatus ? getExecutionReasons(opportunity, leftTransferStatus, rightTransferStatus) : [];
                 const confidenceReasons = getConfidenceReasons(transferStatusConfig?.leftNotice, transferStatusConfig?.rightNotice);
+                const edgeXBase = transferSymbol.replace(/(USDT|USDC|USD|KRW)$/, "");
+                const edgeXContextReasons = opportunity.buyExchange === "EdgeX Perp" || opportunity.sellExchange === "EdgeX Perp"
+                  ? getEdgeXContextReasons(edgeXPerpMap?.get(edgeXBase))
+                  : [];
                 const routeLabel = getOpportunityRouteLabel(title);
                 const candidateId = getWorkflowCandidate(opportunity, routeLabel).id;
                 const isWorkflowSelected = workflowCandidateId === candidateId;
@@ -3408,7 +3445,7 @@ function OpportunitySection({
                       </div>
                     </div>
 
-                    {executionReasons.length > 0 || confidenceReasons.length > 0 ? (
+                    {executionReasons.length > 0 || confidenceReasons.length > 0 || edgeXContextReasons.length > 0 ? (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {executionReasons.map((reason) => (
                           <span key={reason.label} className={`rounded-full border px-2.5 py-1 text-[11px] ${reason.tone}`}>
@@ -3416,6 +3453,11 @@ function OpportunitySection({
                           </span>
                         ))}
                         {confidenceReasons.map((reason) => (
+                          <span key={reason.label} className={`rounded-full border px-2.5 py-1 text-[11px] ${reason.tone}`}>
+                            {reason.label}
+                          </span>
+                        ))}
+                        {edgeXContextReasons.map((reason) => (
                           <span key={reason.label} className={`rounded-full border px-2.5 py-1 text-[11px] ${reason.tone}`}>
                             {reason.label}
                           </span>

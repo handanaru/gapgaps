@@ -449,6 +449,10 @@ export function normalizeEdgeXPerpTickers(raw: {
       metadata: {
         dexId: "edgex",
         sourceUrl: `https://pro.edgex.exchange/trade/${contract.contractName}`,
+        fundingBaseRate: Number(contract.fundingInterestRate),
+        takerFeeRate: Number(contract.defaultTakerFeeRate),
+        makerFeeRate: Number(contract.defaultMakerFeeRate),
+        maxLeverage: Number(contract.displayMaxLeverage),
       },
       timestamp: Date.now(),
     });
