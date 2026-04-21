@@ -1352,6 +1352,9 @@ export default function Home() {
           highest,
           spread,
           venues: tickers.length,
+          payerExchange: highest.exchange,
+          receiverExchange: lowest.exchange,
+          directionalHint: `${highest.exchange} short / ${lowest.exchange} long`,
         };
       })
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
@@ -2985,6 +2988,7 @@ export default function Home() {
                           <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">venues {row.venues}</span>
                         </div>
                         <div className="mt-1 text-sm text-slate-400">Funding high ↔ low spread</div>
+                        <div className="mt-2 inline-flex rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-[11px] text-cyan-100">{row.directionalHint}</div>
                       </div>
                       <div className="text-right">
                         <div className={`font-mono text-xl font-semibold ${row.spread >= 0 ? "text-emerald-300" : "text-amber-300"}`}>{formatPct(row.spread * 100)}</div>
@@ -2992,16 +2996,24 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                         <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Highest funding</div>
                         <div className="mt-2 text-sm font-medium text-white">{row.highest.exchange}</div>
-                        <div className="mt-1 font-mono text-sm text-emerald-300">{formatPct((row.highest.metadata?.fundingRate ?? 0) * 100)}</div>
+                        <div className="mt-1 font-mono text-sm text-rose-300">{formatPct((row.highest.metadata?.fundingRate ?? 0) * 100)}</div>
+                        <div className="mt-1 text-[11px] text-slate-500">지불 가능성 높은 쪽</div>
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                         <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Lowest funding</div>
                         <div className="mt-2 text-sm font-medium text-white">{row.lowest.exchange}</div>
-                        <div className="mt-1 font-mono text-sm text-amber-300">{formatPct((row.lowest.metadata?.fundingRate ?? 0) * 100)}</div>
+                        <div className="mt-1 font-mono text-sm text-emerald-300">{formatPct((row.lowest.metadata?.fundingRate ?? 0) * 100)}</div>
+                        <div className="mt-1 text-[11px] text-slate-500">수령/방어 쪽 후보</div>
+                      </div>
+                      <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 px-4 py-3">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-cyan-200/80">Directional idea</div>
+                        <div className="mt-2 text-sm font-medium text-white">{row.payerExchange} short</div>
+                        <div className="mt-1 text-sm font-medium text-white">{row.receiverExchange} long</div>
+                        <div className="mt-1 text-[11px] text-cyan-100/70">funding spread 기준 방향 힌트</div>
                       </div>
                     </div>
                   </div>
