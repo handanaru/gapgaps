@@ -9,12 +9,14 @@ import {
 
 export async function GET() {
   try {
-    const [{ json: raw, source: priceSource }, { json: book, source: bookSource }, { json: info, source: infoSource }] = await Promise.all([
+    const [{ json: raw, source: priceSource }, { json: book, source: bookSource }, { json: info, source: infoSource }, { json: premium, source: premiumSource }] = await Promise.all([
       fetchFirstJson<{ symbol: string; price: string }[]>(BINANCE_FUTURES_PRICE_URLS),
       fetchFirstJson<{ symbol: string; bidPrice?: string; askPrice?: string }[]>(BINANCE_FUTURES_BOOK_URLS),
       fetchFirstJson<{ symbols: { symbol: string; status: string; contractType: string }[] }>(BINANCE_FUTURES_INFO_URLS),
+      fetchFirstJson<{ symbol: string; lastFundingRate?: string }[]>(["https://fapi.binance.com/fapi/v1/premiumIndex"]),
     ]);
     const bookMap = new Map(book.map((item) => [item.symbol, item]));
+    const premiumMap = new Map(premium.map((item) => [item.symbol, item]));
 
     const activeSymbols = new Set(
       info.symbols
@@ -29,6 +31,7 @@ export async function GET() {
           ...item,
           bidPrice: bookMap.get(item.symbol)?.bidPrice,
           askPrice: bookMap.get(item.symbol)?.askPrice,
+          fundingRate: premiumMap.get(item.symbol)?.lastFundingRate,
         })
       )
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
@@ -37,7 +40,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data,
-      source: { price: priceSource, bookTicker: bookSource, exchangeInfo: infoSource },
+      source: { price: priceSource, bookTicker: bookSource, exchangeInfo: infoSource, premiumIndex: premiumSource },
       count: data.length,
       fetchedAt: Date.now(),
     });

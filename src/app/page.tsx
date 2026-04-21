@@ -181,6 +181,7 @@ const NAVIGATION_SECTIONS: NavigationSection[] = [
   { id: "overview", eyebrow: "Live Overview", title: "라이브 개요", description: "핵심 후보, 필터, 승인 흐름" },
   { id: "basis", eyebrow: "Basis Board", title: "현선 갭 보드", description: "거래소 내부 베이시스 스캔" },
   { id: "perp-perp", eyebrow: "Perp Spread Board", title: "선선 갭 보드", description: "거래소 간 선물 괴리" },
+  { id: "funding-board", eyebrow: "Funding Difference Board", title: "펀비 차액 보드", description: "거래소 간 funding 차이" },
   { id: "cex-cex", eyebrow: "Domestic Premium Routes", title: "국내↔해외 CEX", description: "원화 축 기준 해외 CEX 비교" },
   { id: "cex-dex", eyebrow: "CEX-DEX Routes", title: "CEX↔DEX 루트", description: "체인 호환성 기반 현물 비교" },
   { id: "matrix", eyebrow: "Reference Matrix", title: "전체 시세 매트릭스", description: "참고용 전체 시장 스캔" },
@@ -1323,6 +1324,41 @@ export default function Home() {
     .filter((item) => Math.abs(item.gapPct) >= minSpreadFilter)
     .filter((item) => !isBlockedExchangePairSymbolByLabel(item.buyExchange, item.sellExchange, item.symbol))
     .slice(0, 15);
+  const fundingBoardRows = useMemo(() => {
+    const perpFundingTickers = [
+      ...binanceFuturesTickers,
+      ...bybitPerpTickers,
+      ...gateIoPerpTickers,
+    ].filter((ticker) => Number.isFinite(ticker.metadata?.fundingRate));
+
+    const grouped = new Map<string, NormalizedTicker[]>();
+    for (const ticker of perpFundingTickers) {
+      const key = `${ticker.base}${ticker.quote}`;
+      const current = grouped.get(key) ?? [];
+      current.push(ticker);
+      grouped.set(key, current);
+    }
+
+    return Array.from(grouped.entries())
+      .map(([symbol, tickers]) => {
+        if (tickers.length < 2) return null;
+        const sorted = [...tickers].sort((a, b) => (a.metadata?.fundingRate ?? 0) - (b.metadata?.fundingRate ?? 0));
+        const lowest = sorted[0];
+        const highest = sorted[sorted.length - 1];
+        const spread = (highest.metadata?.fundingRate ?? 0) - (lowest.metadata?.fundingRate ?? 0);
+        return {
+          symbol,
+          lowest,
+          highest,
+          spread,
+          venues: tickers.length,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item))
+      .sort((a, b) => Math.abs(b.spread) - Math.abs(a.spread))
+      .slice(0, 18);
+  }, [binanceFuturesTickers, bybitPerpTickers, gateIoPerpTickers]);
+
   const perpDexBoardCards = [
     {
       id: "hyperliquid",
@@ -2916,6 +2952,63 @@ export default function Home() {
               initialCollapsed
             />
           </div>
+        </CategorySection>
+
+        <CategorySection
+          id="funding-board"
+          eyebrow="Funding Difference Board"
+          title="펀비 차액 보드"
+          description="같은 심볼에서 거래소별 funding rate 차이를 따로 모아 봅니다. 가격 괴리와 별개로 펀비 비대칭이 큰 종목을 먼저 확인하는 전용 파트입니다."
+        >
+          <section className="rounded-[28px] border border-cyan-300/15 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.10),rgba(15,23,42,0.95)_42%,rgba(2,6,23,0.98)_100%)] p-5 shadow-xl shadow-cyan-950/10">
+            <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Funding Spread</p>
+                <h3 className="mt-2 text-xl font-semibold text-white">거래소 간 펀비 차이 상위 후보</h3>
+                <p className="mt-1 text-sm text-slate-400">현재는 Binance / Bybit / Gate.io perp funding 데이터를 기준으로 정렬합니다. 차이가 큰 심볼부터 따로 모아 봅니다.</p>
+              </div>
+              <div className="text-xs text-slate-500">Top {fundingBoardRows.length}</div>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              {fundingBoardRows.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-white/10 bg-slate-950/30 px-5 py-10 text-center text-slate-500 xl:col-span-2">
+                  현재 funding 차액을 비교할 후보가 없습니다.
+                </div>
+              ) : (
+                fundingBoardRows.map((row) => (
+                  <div key={row.symbol} className="rounded-[24px] border border-white/10 bg-slate-950/55 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-semibold text-white">{row.symbol}</span>
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">venues {row.venues}</span>
+                        </div>
+                        <div className="mt-1 text-sm text-slate-400">Funding high ↔ low spread</div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`font-mono text-xl font-semibold ${row.spread >= 0 ? "text-emerald-300" : "text-amber-300"}`}>{formatPct(row.spread * 100)}</div>
+                        <div className="mt-1 text-[11px] text-slate-500">difference</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Highest funding</div>
+                        <div className="mt-2 text-sm font-medium text-white">{row.highest.exchange}</div>
+                        <div className="mt-1 font-mono text-sm text-emerald-300">{formatPct((row.highest.metadata?.fundingRate ?? 0) * 100)}</div>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Lowest funding</div>
+                        <div className="mt-2 text-sm font-medium text-white">{row.lowest.exchange}</div>
+                        <div className="mt-1 font-mono text-sm text-amber-300">{formatPct((row.lowest.metadata?.fundingRate ?? 0) * 100)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
         </CategorySection>
 
         <CategorySection

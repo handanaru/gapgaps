@@ -24,6 +24,7 @@ export async function GET() {
           bid1Price?: string;
           ask1Price?: string;
           turnover24h?: string;
+          fundingRate?: string;
         }>;
       };
     };

@@ -37,7 +37,7 @@ export function normalizeBinanceSpotTicker(raw: { symbol: string; lastPrice: str
   };
 }
 
-export function normalizeBinanceFuturesTicker(raw: { symbol: string; price: string; bidPrice?: string; askPrice?: string }): NormalizedTicker | null {
+export function normalizeBinanceFuturesTicker(raw: { symbol: string; price: string; bidPrice?: string; askPrice?: string; fundingRate?: string }): NormalizedTicker | null {
   const price = Number(raw.price);
   if (!raw.symbol || !Number.isFinite(price) || price <= 0) return null;
   const { base, quote } = splitSymbol(raw.symbol);
@@ -330,6 +330,7 @@ export function normalizeGateIoPerpTickers(
     highest_bid?: string;
     lowest_ask?: string;
     volume_24h_quote?: string;
+    funding_rate?: string;
   }>
 ): NormalizedTicker[] {
   const result: NormalizedTicker[] = [];
@@ -353,6 +354,9 @@ export function normalizeGateIoPerpTickers(
       bidPrice: Number.isFinite(bidPrice) && bidPrice > 0 ? bidPrice : undefined,
       askPrice: Number.isFinite(askPrice) && askPrice > 0 ? askPrice : undefined,
       volume24h: Number.isFinite(volume24h) && volume24h >= 0 ? volume24h : undefined,
+      metadata: {
+        fundingRate: Number(item.funding_rate),
+      },
       timestamp: Date.now(),
     });
   }

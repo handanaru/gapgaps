@@ -21,6 +21,7 @@ export async function GET() {
       highest_bid?: string;
       lowest_ask?: string;
       volume_24h_quote?: string;
+      funding_rate?: string;
     }>;
     const data = normalizeGateIoPerpTickers(raw);
 
