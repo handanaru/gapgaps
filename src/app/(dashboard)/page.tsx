@@ -5,6 +5,7 @@ import { hasVerifiedAssetIdentity } from "@/lib/asset-identity";
 import { isBlockedExchangePairSymbolByLabel } from "@/lib/asset-identity-registry";
 import { getDexExecutionStatus } from "@/lib/dex-execution";
 import { getDexTokenBySymbol } from "@/lib/dex-tokens";
+import { OpportunityCard } from "@/components/opportunity/OpportunityCard";
 import { calculateArbitrage, calculateCrossExchangeArbitrage } from "@/lib/exchanges";
 import { formatNetworkSummary, getMatchedNetworks, hasContractMismatch, summarizeExecutableNetworks } from "@/lib/networks";
 import { AggregatedOpportunityRow, OpportunityFilterKind, TransferStatusMap, buildFundingStream, buildOpportunityStream } from "@/lib/opportunities/aggregator";
@@ -2210,6 +2211,24 @@ export default function Home() {
         />
 
         <section id="filtered-view" className="rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-2xl shadow-slate-950/40">
+          <div className="mb-5 rounded-xl border border-cyan-300/15 bg-[#121317] p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-cyan-300">Unified Opportunity Card</p>
+                <h3 className="mt-1 text-base font-semibold text-white">Step 4 preview</h3>
+              </div>
+              <div className="text-xs text-slate-500">web3map-style card language</div>
+            </div>
+            {filteredOpportunityRows[0] ? (
+              <OpportunityCard
+                item={filteredOpportunityRows[0]}
+                onSelect={(item) => setSelectedChart(getChartSelection(item.sourceTitle, item.opportunity))}
+              />
+            ) : (
+              <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/30 px-4 py-6 text-sm text-slate-500">No opportunity card preview detected.</div>
+            )}
+          </div>
+
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Action Board</p>
