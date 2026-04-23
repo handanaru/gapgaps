@@ -55,7 +55,6 @@ async function parseJsonResponse<T>(response: Response, label: string): Promise<
 type SortDirection = "asc" | "desc";
 
 type OpportunitySortKey = "symbol" | "buyExchange" | "sellExchange" | "buyPrice" | "sellPrice" | "spotPrice" | "futuresPrice" | "gapPct" | "estimatedNetPct";
-type MatrixSortKey = "base" | "bithumbKrw" | "upbitKrw" | "okxKrw" | "binanceKrw" | "bybitKrw" | "gateioKrw" | "spreadPct";
 
 type SortConfig<T extends string> = {
   key: T;
@@ -155,16 +154,6 @@ const TRANSFER_STATUS_POLL_MS = 300_000;
 const ALERT_THRESHOLD_PCT = 1;
 
 
-const MATRIX_COLUMNS: Array<{ key: MatrixSortKey; label: string }> = [
-  { key: "base", label: "Coin" },
-  { key: "bithumbKrw", label: "Bithumb (KRW)" },
-  { key: "upbitKrw", label: "Upbit (KRW)" },
-  { key: "okxKrw", label: "OKX (KRW)" },
-  { key: "binanceKrw", label: "Binance (KRW)" },
-  { key: "bybitKrw", label: "Bybit (KRW)" },
-  { key: "gateioKrw", label: "Gate.io (KRW)" },
-  { key: "spreadPct", label: "Spread %" },
-];
 
 const NAVIGATION_SECTIONS: NavigationSection[] = [
   { id: "overview", eyebrow: "Live Overview", title: "라이브 개요", description: "핵심 후보, 필터, 승인 흐름" },
@@ -198,17 +187,6 @@ function getOpportunityRouteLabel(title: string) {
       return "Bithumb -> Solana DEX";
     default:
       return title;
-  }
-}
-
-function matrixColumnClass(key: MatrixSortKey) {
-  switch (key) {
-    case "base":
-      return "w-[160px]";
-    case "spreadPct":
-      return "w-[140px]";
-    default:
-      return "w-[180px]";
   }
 }
 
@@ -750,9 +728,7 @@ function HomeContent() {
   const [gateIoFeePct] = useState(DEFAULT_GATEIO_TAKER_FEE);
   const [minVolumeUsdt] = useState(0);
   const [countdown, setCountdown] = useState(POLL_INTERVAL_MS / 1000);
-  const [matrixSortConfig, setMatrixSortConfig] = useState<SortConfig<MatrixSortKey>>({ key: "spreadPct", direction: "asc" });
-  const [matrixOrderLock, setMatrixOrderLock] = useState<string[] | null>(null);
-  const [bithumbTransferStatus, setBithumbTransferStatus] = useState<TransferStatusMap>({});
+  const [matrixSortConfig, setMatrixSortConfig] = useState<SortConfig<MatrixSortKey>>({ key: "spreadPct", direction: "asc" });  const [bithumbTransferStatus, setBithumbTransferStatus] = useState<TransferStatusMap>({});
   const [binanceTransferStatus, setBinanceTransferStatus] = useState<TransferStatusMap>({});
   const [bybitTransferStatus, setBybitTransferStatus] = useState<TransferStatusMap>({});
   const [gateIoTransferStatus, setGateIoTransferStatus] = useState<TransferStatusMap>({});
@@ -769,7 +745,6 @@ function HomeContent() {
   const [filteredViewCollapsed, setFilteredViewCollapsed] = useState(true);
   const [showAllActionRows, setShowAllActionRows] = useState(false);
   const [opportunityPanelLimit, setOpportunityPanelLimit] = useState(20);
-  const [matrixCollapsed, setMatrixCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
   const [showScrollTopButton, setShowScrollTopButton] = useState(false);
   const dashboardFilters = useDashboardFilters();
@@ -1479,23 +1454,6 @@ function HomeContent() {
       .sort((a, b) => b.spreadPct - a.spreadPct)
       .slice(0, 25);
   }, [binanceSpotTickers, binanceFuturesTickers, bithumbSpotTickers, upbitSpotTickers, okxSpotTickers, bybitSpotTickers, gateIoSpotTickers, usdtKrwRate, minSpreadFilter, matrixRequireFutures]);
-
-  const sortedPriceMatrixRows = useMemo(() => {
-    if (!matrixOrderLock) {
-      return sortMatrixRows(priceMatrixRows, matrixSortConfig);
-    }
-
-    const orderIndex = new Map(matrixOrderLock.map((key, index) => [key, index]));
-    return [...priceMatrixRows].sort((a, b) => {
-      const leftIndex = orderIndex.get(a.base);
-      const rightIndex = orderIndex.get(b.base);
-      if (leftIndex !== undefined && rightIndex !== undefined) return leftIndex - rightIndex;
-      if (leftIndex !== undefined) return -1;
-      if (rightIndex !== undefined) return 1;
-      return compareText(a.base, b.base, "asc");
-    });
-  }, [matrixOrderLock, priceMatrixRows, matrixSortConfig]);
-
   useEffect(() => {
     if (matrixOrderLock || priceMatrixRows.length === 0) return;
     setMatrixOrderLock(sortMatrixRows(priceMatrixRows, matrixSortConfig).map((row) => row.base));
@@ -3383,108 +3341,17 @@ function HomeContent() {
           />
         </CategorySection>
 
-        <section id="matrix" className="scroll-mt-24 rounded-3xl border border-white/10 bg-slate-950/35 p-6 shadow-xl shadow-slate-950/20">
-          <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <section id="matrix" className="scroll-mt-24 rounded-xl border border-white/10 bg-[#121317] p-6 shadow-lg shadow-slate-950/40">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Reference Layer</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">Full Market Scan Matrix</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                빗썸 KRW, 업비트 KRW, OKX Spot, Binance Spot, Bybit Spot, Gate.io Spot 가격을 모두 KRW 기준으로 비교합니다. 이 영역은 실행 후보를 고른 뒤 전체 시장 분포를 확인하는 참고 레이어입니다.
-              </p>
+              <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500">Matrix moved</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">Reference Matrix moved to /matrix</h2>
+              <p className="mt-2 text-sm text-slate-400">Radar 내부의 대형 참고용 매트릭스는 독립 페이지로 옮겼다. 전체 거래소 KRW 환산 시세 비교는 /matrix에서 확인하면 된다.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              {!matrixCollapsed ? (
-                <>
-                  <label className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-300">
-                    <input
-                      type="checkbox"
-                      checked={matrixRequireFutures}
-                      onChange={(event) => setMatrixRequireFutures(event.target.checked)}
-                      className="accent-cyan-400"
-                    />
-                    선물 종목만 보기
-                  </label>
-                  <label className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-300">
-                    최소 스프레드
-                    <select
-                      value={minSpreadFilter}
-                      onChange={(event) => setMinSpreadFilter(Number(event.target.value))}
-                      className="rounded-md border border-white/10 bg-slate-950 px-2 py-1 text-xs text-slate-100"
-                    >
-                      <option value={0}>0%</option>
-                      <option value={0.1}>0.1%</option>
-                      <option value={0.3}>0.3%</option>
-                      <option value={0.5}>0.5%</option>
-                      <option value={1}>1.0%</option>
-                    </select>
-                  </label>
-                  <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300">Top 25 spreads</span>
-                </>
-              ) : null}
-              <CollapseButton collapsed={matrixCollapsed} onClick={() => setMatrixCollapsed((prev) => !prev)} />
-            </div>
+            <a href="/matrix" className="inline-flex items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-4 py-3 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20">
+              Matrix 열기 →
+            </a>
           </div>
-
-          {!matrixCollapsed ? (
-            <div className="overflow-hidden rounded-2xl border border-white/10">
-              <table className="min-w-full table-fixed divide-y divide-white/10 text-sm">
-                <thead className="bg-slate-900/70 text-slate-300">
-                  <tr>
-                    {MATRIX_COLUMNS.map((column) => (
-                      <th key={column.key} className={`px-4 py-3 text-left font-medium ${matrixColumnClass(column.key)}`}>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setMatrixSortConfig((current) => {
-                              const nextConfig = { key: column.key, direction: nextSortDirection(current, column.key) } satisfies SortConfig<MatrixSortKey>;
-                              setMatrixOrderLock(sortMatrixRows(priceMatrixRows, nextConfig).map((row) => row.base));
-                              return nextConfig;
-                            })
-                          }
-                          className="inline-flex items-center gap-2 text-left transition hover:text-white"
-                        >
-                          <span>{column.label}</span>
-                          <span className="text-xs text-slate-500">{sortIndicator(matrixSortConfig, column.key)}</span>
-                        </button>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 bg-slate-950/40">
-                  {sortedPriceMatrixRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
-                        {loading ? "시세 데이터를 불러오는 중..." : "비교 가능한 가격 데이터가 없습니다."}
-                      </td>
-                    </tr>
-                  ) : (
-                    sortedPriceMatrixRows.map((row) => (
-                      <tr key={row.base} className="hover:bg-white/5">
-                        <td className="px-4 py-3 font-medium text-white">{row.base}</td>
-                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.bithumbKrw ? formatPrice(row.bithumbKrw) : "-"}</td>
-                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.upbitKrw ? formatPrice(row.upbitKrw) : "-"}</td>
-                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.okxKrw ? formatPrice(row.okxKrw) : "-"}</td>
-                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.binanceKrw ? formatPrice(row.binanceKrw) : "-"}</td>
-                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.bybitKrw ? formatPrice(row.bybitKrw) : "-"}</td>
-                        <td className="px-4 py-3 font-mono tabular-nums text-slate-300">{row.gateioKrw ? formatPrice(row.gateioKrw) : "-"}</td>
-                        <td className={`px-4 py-3 font-mono tabular-nums font-semibold ${row.spreadPct > 0.5 ? "text-emerald-400" : "text-slate-300"}`}>{formatPct(row.spreadPct)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <CollapsedSummary
-              items={sortedPriceMatrixRows.slice(0, 3).map((row) => ({
-                id: row.base,
-                primary: row.base,
-                secondary: `Spread ${formatPct(row.spreadPct)}`,
-                accent: row.spreadPct > 0.5 ? "text-emerald-300" : "text-slate-300",
-              }))}
-              emptyLabel="요약할 가격 비교 데이터가 없습니다."
-            />
-          )}
         </section>
 
         {showScrollTopButton ? (
