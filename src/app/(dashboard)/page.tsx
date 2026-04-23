@@ -482,28 +482,6 @@ function sortOpportunityRows(rows: ArbitrageOpportunity[], sortConfig: SortConfi
   });
 }
 
-function sortMatrixRows(rows: MatrixRow[], sortConfig: SortConfig<MatrixSortKey>) {
-  return [...rows].sort((a, b) => {
-    switch (sortConfig.key) {
-      case "base":
-        return compareText(a.base, b.base, sortConfig.direction);
-      case "bithumbKrw":
-        return compareNumber(a.bithumbKrw, b.bithumbKrw, sortConfig.direction);
-      case "upbitKrw":
-        return compareNumber(a.upbitKrw, b.upbitKrw, sortConfig.direction);
-      case "okxKrw":
-        return compareNumber(a.okxKrw, b.okxKrw, sortConfig.direction);
-      case "binanceKrw":
-        return compareNumber(a.binanceKrw, b.binanceKrw, sortConfig.direction);
-      case "bybitKrw":
-        return compareNumber(a.bybitKrw, b.bybitKrw, sortConfig.direction);
-      case "gateioKrw":
-        return compareNumber(a.gateioKrw, b.gateioKrw, sortConfig.direction);
-      case "spreadPct":
-        return compareNumber(a.spreadPct, b.spreadPct, sortConfig.direction);
-    }
-  });
-}
 
 function formatStepLabel(step: WorkflowStep) {
   switch (step) {
@@ -719,17 +697,14 @@ function HomeContent() {
   const [loading, setLoading] = useState(true);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">("unsupported");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [minSpreadFilter, setMinSpreadFilter] = useState(0.5);
-  const [matrixRequireFutures, setMatrixRequireFutures] = useState(true);
-  const [binanceFeePct] = useState(DEFAULT_BINANCE_TAKER_FEE);
+      const [binanceFeePct] = useState(DEFAULT_BINANCE_TAKER_FEE);
   const [bithumbFeePct] = useState(DEFAULT_BITHUMB_TAKER_FEE);
   const [okxFeePct] = useState(DEFAULT_OKX_TAKER_FEE);
   const [bybitFeePct] = useState(DEFAULT_BYBIT_TAKER_FEE);
   const [gateIoFeePct] = useState(DEFAULT_GATEIO_TAKER_FEE);
   const [minVolumeUsdt] = useState(0);
   const [countdown, setCountdown] = useState(POLL_INTERVAL_MS / 1000);
-  const [matrixSortConfig, setMatrixSortConfig] = useState<SortConfig<MatrixSortKey>>({ key: "spreadPct", direction: "asc" });  const [bithumbTransferStatus, setBithumbTransferStatus] = useState<TransferStatusMap>({});
-  const [binanceTransferStatus, setBinanceTransferStatus] = useState<TransferStatusMap>({});
+    const [binanceTransferStatus, setBinanceTransferStatus] = useState<TransferStatusMap>({});
   const [bybitTransferStatus, setBybitTransferStatus] = useState<TransferStatusMap>({});
   const [gateIoTransferStatus, setGateIoTransferStatus] = useState<TransferStatusMap>({});
   const [workflowStep, setWorkflowStep] = useState<WorkflowStep>("idle");
@@ -1392,68 +1367,7 @@ function HomeContent() {
     });
   }, [notificationsEnabled, notificationPermission, topAnyCrossExchange]);
 
-  const priceMatrixRows = useMemo(() => {
-    if (!usdtKrwRate) return [];
-
-    const binanceMap = new Map(binanceSpotTickers.map((ticker) => [ticker.base, ticker]));
-    const binanceFuturesBaseSet = new Set(binanceFuturesTickers.map((ticker) => ticker.base));
-    const bithumbMap = new Map(bithumbSpotTickers.map((ticker) => [ticker.base, ticker]));
-    const upbitMap = new Map(upbitSpotTickers.map((ticker) => [ticker.base, ticker]));
-    const okxMap = new Map(okxSpotTickers.map((ticker) => [ticker.base, ticker]));
-    const bybitMap = new Map(bybitSpotTickers.map((ticker) => [ticker.base, ticker]));
-    const gateIoMap = new Map(gateIoSpotTickers.map((ticker) => [ticker.base, ticker]));
-
-    const bases = Array.from(
-      new Set([
-        ...Array.from(bithumbMap.keys()),
-        ...Array.from(upbitMap.keys()),
-        ...Array.from(okxMap.keys()),
-        ...Array.from(binanceMap.keys()),
-        ...Array.from(bybitMap.keys()),
-        ...Array.from(gateIoMap.keys()),
-      ])
-    ).sort();
-
-    return bases
-      .map((base) => {
-        if (matrixRequireFutures && !binanceFuturesBaseSet.has(base)) return null;
-
-        const bithumb = bithumbMap.get(base);
-        const upbit = upbitMap.get(base);
-        const okx = okxMap.get(base);
-        const binance = binanceMap.get(base);
-        const bybit = bybitMap.get(base);
-        const gateIo = gateIoMap.get(base);
-
-        const bithumbKrw = bithumb?.price ?? null;
-        const upbitKrw = upbit?.price ?? null;
-        const okxKrw = okx ? okx.price * usdtKrwRate : null;
-        const binanceKrw = binance ? binance.price * usdtKrwRate : null;
-        const bybitKrw = bybit ? bybit.price * usdtKrwRate : null;
-        const gateioKrw = gateIo ? gateIo.price * usdtKrwRate : null;
-
-        const compared = [bithumbKrw, upbitKrw, okxKrw, binanceKrw, bybitKrw, gateioKrw].filter((value): value is number => value !== null && Number.isFinite(value));
-        if (compared.length < 2) return null;
-
-        const minPrice = Math.min(...compared);
-        const maxPrice = Math.max(...compared);
-
-        return {
-          base,
-          bithumbKrw,
-          upbitKrw,
-          okxKrw,
-          binanceKrw,
-          bybitKrw,
-          gateioKrw,
-          spreadPct: ((maxPrice - minPrice) / minPrice) * 100,
-        };
-      })
-      .filter((row): row is MatrixRow => row !== null)
-      .filter((row) => row.spreadPct >= minSpreadFilter)
-      .sort((a, b) => b.spreadPct - a.spreadPct)
-      .slice(0, 25);
-  }, [binanceSpotTickers, binanceFuturesTickers, bithumbSpotTickers, upbitSpotTickers, okxSpotTickers, bybitSpotTickers, gateIoSpotTickers, usdtKrwRate, minSpreadFilter, matrixRequireFutures]);
+  
   useEffect(() => {
     if (matrixOrderLock || priceMatrixRows.length === 0) return;
     setMatrixOrderLock(sortMatrixRows(priceMatrixRows, matrixSortConfig).map((row) => row.base));
@@ -1931,7 +1845,7 @@ function HomeContent() {
           <span className="rounded-full border border-white/10 bg-slate-900/80 px-3 py-1">
             DEX 후보 {solanaDexTickers.length.toLocaleString()}
           </span>
-          <a href="#cex-cex" className="ml-auto rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-cyan-100 transition hover:bg-cyan-400/20">
+          <a href="/board?tab=cex-bithumb-binance" className="ml-auto rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-cyan-100 transition hover:bg-cyan-400/20">
             상세 비교로 이동
           </a>
         </section>
