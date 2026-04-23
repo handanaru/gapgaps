@@ -61,17 +61,6 @@ type SortConfig<T extends string> = {
   direction: SortDirection;
 };
 
-type MatrixRow = {
-  base: string;
-  bithumbKrw: number | null;
-  upbitKrw: number | null;
-  okxKrw: number | null;
-  binanceKrw: number | null;
-  bybitKrw: number | null;
-  gateioKrw: number | null;
-  spreadPct: number;
-};
-
 type ForeignPriceMap = Map<
   string,
   {
@@ -198,16 +187,6 @@ function formatPrice(value: number) {
 
 function formatPct(value: number) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(3)}%`;
-}
-
-function nextSortDirection<T extends string>(current: SortConfig<T>, key: T): SortDirection {
-  if (current.key !== key) return "asc";
-  return current.direction === "desc" ? "asc" : "desc";
-}
-
-function sortIndicator<T extends string>(sortConfig: SortConfig<T>, key: T) {
-  if (sortConfig.key !== key) return "↕";
-  return sortConfig.direction === "desc" ? "↓" : "↑";
 }
 
 function compareText(a: string, b: string, direction: SortDirection) {
@@ -703,8 +682,10 @@ function HomeContent() {
   const [bybitFeePct] = useState(DEFAULT_BYBIT_TAKER_FEE);
   const [gateIoFeePct] = useState(DEFAULT_GATEIO_TAKER_FEE);
   const [minVolumeUsdt] = useState(0);
+  const [minSpreadFilter] = useState(0);
   const [countdown, setCountdown] = useState(POLL_INTERVAL_MS / 1000);
-    const [binanceTransferStatus, setBinanceTransferStatus] = useState<TransferStatusMap>({});
+  const [bithumbTransferStatus, setBithumbTransferStatus] = useState<TransferStatusMap>({});
+  const [binanceTransferStatus, setBinanceTransferStatus] = useState<TransferStatusMap>({});
   const [bybitTransferStatus, setBybitTransferStatus] = useState<TransferStatusMap>({});
   const [gateIoTransferStatus, setGateIoTransferStatus] = useState<TransferStatusMap>({});
   const [workflowStep, setWorkflowStep] = useState<WorkflowStep>("idle");
@@ -1367,11 +1348,6 @@ function HomeContent() {
     });
   }, [notificationsEnabled, notificationPermission, topAnyCrossExchange]);
 
-  
-  useEffect(() => {
-    if (matrixOrderLock || priceMatrixRows.length === 0) return;
-    setMatrixOrderLock(sortMatrixRows(priceMatrixRows, matrixSortConfig).map((row) => row.base));
-  }, [matrixOrderLock, matrixSortConfig, priceMatrixRows]);
 
   const okxSpotPriceMap = useMemo<ForeignPriceMap>(() => {
     return new Map(okxSpotTickers.map((ticker) => [ticker.base, { price: ticker.price, quote: ticker.quote }]));
