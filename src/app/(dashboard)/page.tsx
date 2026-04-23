@@ -5,6 +5,7 @@ import { hasVerifiedAssetIdentity } from "@/lib/asset-identity";
 import { isBlockedExchangePairSymbolByLabel } from "@/lib/asset-identity-registry";
 import { getDexExecutionStatus } from "@/lib/dex-execution";
 import { getDexTokenBySymbol } from "@/lib/dex-tokens";
+import { OpportunityDetailDrawer } from "@/components/detail/OpportunityDetailDrawer";
 import { OpportunityCard } from "@/components/opportunity/OpportunityCard";
 import { useAuxPanelState } from "@/components/radar/aux-panel-context";
 import { OpportunityPanel } from "@/components/radar/OpportunityPanel";
@@ -3495,6 +3496,54 @@ function HomeContent() {
             ↑ 위로 가기
           </button>
         ) : null}
+
+        <OpportunityDetailDrawer
+          open={Boolean(selectedChart)}
+          title={selectedChart ? `${selectedChart.symbol} · ${selectedChart.title}` : undefined}
+          subtitle={selectedChart?.routeLabel}
+          onClose={() => setSelectedChart(null)}
+          renderers={{
+            price: (
+              <OpportunityChartPanel
+                selection={selectedChart}
+                history={selectedChart ? spreadHistoryByKey[selectedChart.key] ?? [] : []}
+                onClear={() => setSelectedChart(null)}
+              />
+            ),
+            network: (
+              <div className="rounded-xl border border-white/10 bg-[#121317] p-4 text-sm text-slate-400">
+                Step 7 skeleton: Network 진단은 다음 단계에서 기존 transfer/network 블록을 이 탭으로 이동합니다.
+              </div>
+            ),
+            withdrawal: (
+              <WithdrawalWorkflowSection
+                candidate={workflowCandidate}
+                networkState={workflowNetworkState}
+                logEntries={workflowLog}
+                mode={workflowMode}
+                step={workflowStep}
+                quantity={workflowQuantity}
+                lastUpdated={workflowUpdatedAt}
+                collapsed={false}
+                onToggleCollapsed={() => {}}
+                onQuantityChange={setWorkflowQuantity}
+                onApproveQuantity={() => setWorkflowStep("quantity-approved")}
+                onApproveAuth={() => setWorkflowStep("auth-approved")}
+                onExecute={() => setWorkflowStep("executed")}
+                onReset={() => {
+                  setWorkflowStep("idle");
+                  setWorkflowCandidate(null);
+                  setWorkflowUpdatedAt(null);
+                }}
+              />
+            ),
+            orderbook: (
+              <div className="rounded-xl border border-white/10 bg-[#121317] p-4 text-sm text-slate-400">
+                Step 7 skeleton: Order Book 탭은 이후 board drilldown 데이터와 연결합니다.
+              </div>
+            ),
+          }}
+        />
           </div>
         </div>
       </div>
