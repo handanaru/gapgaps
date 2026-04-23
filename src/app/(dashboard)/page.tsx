@@ -6,6 +6,7 @@ import { isBlockedExchangePairSymbolByLabel } from "@/lib/asset-identity-registr
 import { getDexExecutionStatus } from "@/lib/dex-execution";
 import { getDexTokenBySymbol } from "@/lib/dex-tokens";
 import { OpportunityCard } from "@/components/opportunity/OpportunityCard";
+import { useAuxPanelState } from "@/components/radar/aux-panel-context";
 import { OpportunityPanel } from "@/components/radar/OpportunityPanel";
 import { calculateArbitrage, calculateCrossExchangeArbitrage } from "@/lib/exchanges";
 import { formatNetworkSummary, getMatchedNetworks, hasContractMismatch, summarizeExecutableNetworks } from "@/lib/networks";
@@ -716,6 +717,7 @@ function getEdgeXContextReasons(ticker: NormalizedTicker | undefined) {
 }
 
 function HomeContent() {
+  const { setState: setAuxPanelState } = useAuxPanelState();
   const [binanceSpotTickers, setBinanceSpotTickers] = useState<NormalizedTicker[]>([]);
   const [binanceFuturesTickers, setBinanceFuturesTickers] = useState<NormalizedTicker[]>([]);
   const [binancePerpEnabled, setBinancePerpEnabled] = useState(true);
@@ -1693,6 +1695,42 @@ function HomeContent() {
         : currentYieldValue >= 4
           ? "중간"
           : "낮음";
+
+  useEffect(() => {
+    setAuxPanelState({
+      heroTitle: recommendedActionRow?.opportunity.symbol,
+      heroRoute: recommendedActionRow ? `${recommendedActionRow.opportunity.buyExchange} → ${recommendedActionRow.opportunity.sellExchange}` : undefined,
+      heroNetPct: recommendedActionRow ? formatPct(recommendedActionRow.opportunity.estimatedNetPct) : undefined,
+      heroGapPct: recommendedActionRow ? formatPct(recommendedActionRow.opportunity.gapPct) : undefined,
+      statusMetrics: [
+        { label: "총 자산", value: totalTrackedAssets.toLocaleString() },
+        { label: "실행 가능 루트", value: executableCrossExchangeCount.toLocaleString(), tone: "text-emerald-300" },
+        { label: "DEX 후보", value: solanaDexTickers.length.toLocaleString(), tone: "text-cyan-200" },
+        { label: "리스크", value: currentRiskLabel, tone: currentRiskLabel === "높음" ? "text-rose-300" : currentRiskLabel === "중간" ? "text-amber-300" : "text-cyan-300" },
+      ],
+      fundingTop: fundingBoardRows.slice(0, 3).map((row) => ({
+        id: row.id,
+        title: row.symbol,
+        subtitle: row.directionalHint,
+        value: formatPct(row.fundingSpread * 100),
+      })),
+      actionFeed: aggregatedOpportunityRows.slice(0, 5).map((row) => ({
+        id: row.id,
+        title: row.symbol,
+        subtitle: row.routeLabel,
+        value: formatPct(row.netPct),
+      })),
+    });
+  }, [
+    currentRiskLabel,
+    executableCrossExchangeCount,
+    aggregatedOpportunityRows,
+    fundingBoardRows,
+    recommendedActionRow,
+    setAuxPanelState,
+    solanaDexTickers.length,
+    totalTrackedAssets,
+  ]);
 
   const { marketType, executableOnly, minGap, venues } = dashboardFilters;
 
@@ -4070,7 +4108,6 @@ function WithdrawalWorkflowSection({
     </section>
   );
 }
-
 
 export default function Home() {
   return (
