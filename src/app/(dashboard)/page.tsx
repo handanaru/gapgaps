@@ -7,6 +7,7 @@ import { getDexExecutionStatus } from "@/lib/dex-execution";
 import { getDexTokenBySymbol } from "@/lib/dex-tokens";
 import { calculateArbitrage, calculateCrossExchangeArbitrage } from "@/lib/exchanges";
 import { formatNetworkSummary, getMatchedNetworks, hasContractMismatch, summarizeExecutableNetworks } from "@/lib/networks";
+import { AggregatedOpportunityRow, OpportunityFilterKind, TransferStatusMap, buildFundingStream, buildOpportunityStream } from "@/lib/opportunities/aggregator";
 import { ArbitrageOpportunity, NormalizedTicker, TransferStatus } from "@/lib/types";
 
 type ApiResponse = {
@@ -78,7 +79,6 @@ type ForeignPriceMap = Map<
     sourceUrl?: string;
   }
 >;
-type TransferStatusMap = Record<string, TransferStatus>;
 type DexExecutionRow = {
   symbol: string;
   chainLabel: string;
@@ -138,22 +138,6 @@ type NavigationSection = {
   eyebrow: string;
   title: string;
   description: string;
-};
-type OpportunityFilterKind = "all" | "basis" | "perp-perp" | "cex-cex" | "cex-dex";
-type AggregatedOpportunityRow = {
-  id: string;
-  kind: Exclude<OpportunityFilterKind, "all">;
-  sourceTitle: string;
-  routeLabel: string;
-  opportunity: ArbitrageOpportunity;
-  transferStatusConfig?: {
-    leftExchangeLabel: string;
-    leftStatuses: TransferStatusMap;
-    rightExchangeLabel: string;
-    rightStatuses?: TransferStatusMap;
-    leftNotice?: string;
-    rightNotice?: string;
-  };
 };
 
 const DEFAULT_BINANCE_TAKER_FEE = 0.05;
@@ -1325,41 +1309,11 @@ export default function Home() {
     .filter((item) => !isBlockedExchangePairSymbolByLabel(item.buyExchange, item.sellExchange, item.symbol))
     .slice(0, 15);
   const fundingBoardRows = useMemo(() => {
-    const perpFundingTickers = [
+    return buildFundingStream([
       ...binanceFuturesTickers,
       ...bybitPerpTickers,
       ...gateIoPerpTickers,
-    ].filter((ticker) => Number.isFinite(ticker.metadata?.fundingRate));
-
-    const grouped = new Map<string, NormalizedTicker[]>();
-    for (const ticker of perpFundingTickers) {
-      const key = `${ticker.base}${ticker.quote}`;
-      const current = grouped.get(key) ?? [];
-      current.push(ticker);
-      grouped.set(key, current);
-    }
-
-    return Array.from(grouped.entries())
-      .map(([symbol, tickers]) => {
-        if (tickers.length < 2) return null;
-        const sorted = [...tickers].sort((a, b) => (a.metadata?.fundingRate ?? 0) - (b.metadata?.fundingRate ?? 0));
-        const lowest = sorted[0];
-        const highest = sorted[sorted.length - 1];
-        const spread = (highest.metadata?.fundingRate ?? 0) - (lowest.metadata?.fundingRate ?? 0);
-        return {
-          symbol,
-          lowest,
-          highest,
-          spread,
-          venues: tickers.length,
-          payerExchange: highest.exchange,
-          receiverExchange: lowest.exchange,
-          directionalHint: `${highest.exchange} short / ${lowest.exchange} long`,
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item))
-      .sort((a, b) => Math.abs(b.spread) - Math.abs(a.spread))
-      .slice(0, 18);
+    ]).slice(0, 18);
   }, [binanceFuturesTickers, bybitPerpTickers, gateIoPerpTickers]);
 
   const perpDexBoardCards = [
@@ -1639,97 +1593,28 @@ export default function Home() {
     };
   }, [binanceSpotPriceMap, bybitSpotPriceMap, gateIoSpotPriceMap, okxSpotPriceMap, solanaDexPriceMap]);
   const aggregatedOpportunityRows = useMemo<AggregatedOpportunityRow[]>(() => {
-    const rows: AggregatedOpportunityRow[] = [];
-
-    const pushRows = (
-      kind: Exclude<OpportunityFilterKind, "all">,
-      sourceTitle: string,
-      opportunities: ArbitrageOpportunity[],
-      transferStatusConfig?: AggregatedOpportunityRow["transferStatusConfig"]
-    ) => {
-      opportunities.forEach((opportunity) => {
-        rows.push({
-          id: `${kind}:${sourceTitle}:${opportunity.symbol}:${opportunity.buyExchange}:${opportunity.sellExchange}`,
-          kind,
-          sourceTitle,
-          routeLabel: getOpportunityRouteLabel(sourceTitle),
-          opportunity,
-          transferStatusConfig,
-        });
-      });
-    };
-
-    pushRows("basis", "Binance Spot vs Futures", topBinance);
-    pushRows("basis", "OKX Spot vs Perp", topOkx);
-    pushRows("perp-perp", "Binance Perp vs OKX Swap", topPerpPerp);
-    pushRows("perp-perp", "Binance Perp vs Bybit Perp", topPerpPerpBybit);
-    pushRows("perp-perp", "Binance Perp vs Gate.io Perp", topPerpPerpGateIo);
-    pushRows("perp-perp", "Binance Perp vs Hyperliquid Perp", topBinanceHyperliquidPerp);
-    pushRows("perp-perp", "Binance Perp vs EdgeX Perp", topBinanceEdgeXPerp);
-    pushRows("perp-perp", "Binance Perp vs Aster Perp", topBinanceAsterPerp);
-    pushRows("perp-perp", "OKX Swap vs Bybit Perp", topOkxBybitPerp);
-    pushRows("perp-perp", "OKX Swap vs Gate.io Perp", topOkxGateIoPerp);
-    pushRows("perp-perp", "Bybit Perp vs Gate.io Perp", topBybitGateIoPerp);
-    pushRows("cex-cex", "Bithumb KRW vs OKX Spot", topCrossExchange, {
-      leftExchangeLabel: "빗썸",
-      leftStatuses: bithumbTransferStatus,
-      rightExchangeLabel: "OKX",
-      rightNotice: "공개 API 미지원",
-    });
-    pushRows("cex-cex", "Bithumb KRW vs Binance Spot", topBithumbBinance, {
-      leftExchangeLabel: "빗썸",
-      leftStatuses: bithumbTransferStatus,
-      rightExchangeLabel: "바이낸스",
-      rightStatuses: binanceTransferStatus,
-    });
-    pushRows("cex-cex", "Bithumb KRW vs Bybit Spot", topBithumbBybit, {
-      leftExchangeLabel: "빗썸",
-      leftStatuses: bithumbTransferStatus,
-      rightExchangeLabel: "Bybit",
-      rightStatuses: bybitTransferStatus,
-    });
-    pushRows("cex-cex", "Bithumb KRW vs Gate.io Spot", topBithumbGateIo, {
-      leftExchangeLabel: "빗썸",
-      leftStatuses: bithumbTransferStatus,
-      rightExchangeLabel: "Gate.io",
-      rightStatuses: gateIoTransferStatus,
-    });
-    pushRows("cex-cex", "Upbit KRW vs OKX Spot", topUpbitOkx, {
-      leftExchangeLabel: "업비트",
-      leftStatuses: {},
-      rightExchangeLabel: "OKX",
-      rightNotice: "업비트/OKX 공개 전송 상태 미지원",
-    });
-    pushRows("cex-cex", "Upbit KRW vs Binance Spot", topUpbitBinance, {
-      leftExchangeLabel: "업비트",
-      leftStatuses: {},
-      rightExchangeLabel: "바이낸스",
-      rightStatuses: binanceTransferStatus,
-      leftNotice: "업비트 공개 전송 상태 미지원",
-    });
-    pushRows("cex-cex", "Upbit KRW vs Bybit Spot", topUpbitBybit, {
-      leftExchangeLabel: "업비트",
-      leftStatuses: {},
-      rightExchangeLabel: "Bybit",
-      rightStatuses: bybitTransferStatus,
-      leftNotice: "업비트 공개 전송 상태 미지원",
-      rightNotice: "Bybit transfer status unavailable",
-    });
-    pushRows("cex-cex", "Upbit KRW vs Gate.io Spot", topUpbitGateIo, {
-      leftExchangeLabel: "업비트",
-      leftStatuses: {},
-      rightExchangeLabel: "Gate.io",
-      rightStatuses: gateIoTransferStatus,
-      leftNotice: "업비트 공개 전송 상태 미지원",
-    });
-    pushRows("cex-dex", "Bithumb KRW vs Solana DEX", topBithumbSolanaDex, {
-      leftExchangeLabel: "빗썸",
-      leftStatuses: bithumbTransferStatus,
-      rightExchangeLabel: "Solana DEX",
-      rightStatuses: solanaDexTransferStatus,
-    });
-
-    return rows.sort((left, right) => right.opportunity.estimatedNetPct - left.opportunity.estimatedNetPct);
+    return buildOpportunityStream([
+      { kind: "basis", sourceTitle: "Binance Spot vs Futures", routeLabel: getOpportunityRouteLabel("Binance Spot vs Futures"), opportunities: topBinance },
+      { kind: "basis", sourceTitle: "OKX Spot vs Perp", routeLabel: getOpportunityRouteLabel("OKX Spot vs Perp"), opportunities: topOkx },
+      { kind: "perp-perp", sourceTitle: "Binance Perp vs OKX Swap", routeLabel: getOpportunityRouteLabel("Binance Perp vs OKX Swap"), opportunities: topPerpPerp },
+      { kind: "perp-perp", sourceTitle: "Binance Perp vs Bybit Perp", routeLabel: getOpportunityRouteLabel("Binance Perp vs Bybit Perp"), opportunities: topPerpPerpBybit },
+      { kind: "perp-perp", sourceTitle: "Binance Perp vs Gate.io Perp", routeLabel: getOpportunityRouteLabel("Binance Perp vs Gate.io Perp"), opportunities: topPerpPerpGateIo },
+      { kind: "perp-perp", sourceTitle: "Binance Perp vs Hyperliquid Perp", routeLabel: getOpportunityRouteLabel("Binance Perp vs Hyperliquid Perp"), opportunities: topBinanceHyperliquidPerp },
+      { kind: "perp-perp", sourceTitle: "Binance Perp vs EdgeX Perp", routeLabel: getOpportunityRouteLabel("Binance Perp vs EdgeX Perp"), opportunities: topBinanceEdgeXPerp },
+      { kind: "perp-perp", sourceTitle: "Binance Perp vs Aster Perp", routeLabel: getOpportunityRouteLabel("Binance Perp vs Aster Perp"), opportunities: topBinanceAsterPerp },
+      { kind: "perp-perp", sourceTitle: "OKX Swap vs Bybit Perp", routeLabel: getOpportunityRouteLabel("OKX Swap vs Bybit Perp"), opportunities: topOkxBybitPerp },
+      { kind: "perp-perp", sourceTitle: "OKX Swap vs Gate.io Perp", routeLabel: getOpportunityRouteLabel("OKX Swap vs Gate.io Perp"), opportunities: topOkxGateIoPerp },
+      { kind: "perp-perp", sourceTitle: "Bybit Perp vs Gate.io Perp", routeLabel: getOpportunityRouteLabel("Bybit Perp vs Gate.io Perp"), opportunities: topBybitGateIoPerp },
+      { kind: "cex-cex", sourceTitle: "Bithumb KRW vs OKX Spot", routeLabel: getOpportunityRouteLabel("Bithumb KRW vs OKX Spot"), opportunities: topCrossExchange, transferStatusConfig: { leftExchangeLabel: "빗썸", leftStatuses: bithumbTransferStatus, rightExchangeLabel: "OKX", rightNotice: "공개 API 미지원" } },
+      { kind: "cex-cex", sourceTitle: "Bithumb KRW vs Binance Spot", routeLabel: getOpportunityRouteLabel("Bithumb KRW vs Binance Spot"), opportunities: topBithumbBinance, transferStatusConfig: { leftExchangeLabel: "빗썸", leftStatuses: bithumbTransferStatus, rightExchangeLabel: "바이낸스", rightStatuses: binanceTransferStatus } },
+      { kind: "cex-cex", sourceTitle: "Bithumb KRW vs Bybit Spot", routeLabel: getOpportunityRouteLabel("Bithumb KRW vs Bybit Spot"), opportunities: topBithumbBybit, transferStatusConfig: { leftExchangeLabel: "빗썸", leftStatuses: bithumbTransferStatus, rightExchangeLabel: "Bybit", rightStatuses: bybitTransferStatus } },
+      { kind: "cex-cex", sourceTitle: "Bithumb KRW vs Gate.io Spot", routeLabel: getOpportunityRouteLabel("Bithumb KRW vs Gate.io Spot"), opportunities: topBithumbGateIo, transferStatusConfig: { leftExchangeLabel: "빗썸", leftStatuses: bithumbTransferStatus, rightExchangeLabel: "Gate.io", rightStatuses: gateIoTransferStatus } },
+      { kind: "cex-cex", sourceTitle: "Upbit KRW vs OKX Spot", routeLabel: getOpportunityRouteLabel("Upbit KRW vs OKX Spot"), opportunities: topUpbitOkx, transferStatusConfig: { leftExchangeLabel: "업비트", leftStatuses: {}, rightExchangeLabel: "OKX", rightNotice: "업비트/OKX 공개 전송 상태 미지원" } },
+      { kind: "cex-cex", sourceTitle: "Upbit KRW vs Binance Spot", routeLabel: getOpportunityRouteLabel("Upbit KRW vs Binance Spot"), opportunities: topUpbitBinance, transferStatusConfig: { leftExchangeLabel: "업비트", leftStatuses: {}, rightExchangeLabel: "바이낸스", rightStatuses: binanceTransferStatus, leftNotice: "업비트 공개 전송 상태 미지원" } },
+      { kind: "cex-cex", sourceTitle: "Upbit KRW vs Bybit Spot", routeLabel: getOpportunityRouteLabel("Upbit KRW vs Bybit Spot"), opportunities: topUpbitBybit, transferStatusConfig: { leftExchangeLabel: "업비트", leftStatuses: {}, rightExchangeLabel: "Bybit", rightStatuses: bybitTransferStatus, leftNotice: "업비트 공개 전송 상태 미지원", rightNotice: "Bybit transfer status unavailable" } },
+      { kind: "cex-cex", sourceTitle: "Upbit KRW vs Gate.io Spot", routeLabel: getOpportunityRouteLabel("Upbit KRW vs Gate.io Spot"), opportunities: topUpbitGateIo, transferStatusConfig: { leftExchangeLabel: "업비트", leftStatuses: {}, rightExchangeLabel: "Gate.io", rightStatuses: gateIoTransferStatus, leftNotice: "업비트 공개 전송 상태 미지원" } },
+      { kind: "cex-dex", sourceTitle: "Bithumb KRW vs Solana DEX", routeLabel: getOpportunityRouteLabel("Bithumb KRW vs Solana DEX"), opportunities: topBithumbSolanaDex, transferStatusConfig: { leftExchangeLabel: "빗썸", leftStatuses: bithumbTransferStatus, rightExchangeLabel: "Solana DEX", rightStatuses: solanaDexTransferStatus } },
+    ]);
   }, [
     bithumbTransferStatus,
     binanceTransferStatus,
@@ -3000,7 +2885,7 @@ export default function Home() {
                       <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                         <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Highest funding</div>
                         <div className="mt-2 text-sm font-medium text-white">{row.highest.exchange}</div>
-                        <div className="mt-1 font-mono text-sm text-rose-300">{formatPct((row.highest.metadata?.fundingRate ?? 0) * 100)}</div>
+                        <div className="mt-1 font-mono text-sm text-rose-300">{formatPct((row.fundingRateFrom ?? 0) * 100)}</div>
                         <div className="mt-1 text-[11px] text-slate-500">지불 가능성 높은 쪽</div>
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
