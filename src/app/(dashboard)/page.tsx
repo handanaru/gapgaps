@@ -1,14 +1,16 @@
 ﻿"use client";
 
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { hasVerifiedAssetIdentity } from "@/lib/asset-identity";
 import { isBlockedExchangePairSymbolByLabel } from "@/lib/asset-identity-registry";
 import { getDexExecutionStatus } from "@/lib/dex-execution";
 import { getDexTokenBySymbol } from "@/lib/dex-tokens";
 import { OpportunityCard } from "@/components/opportunity/OpportunityCard";
+import { OpportunityPanel } from "@/components/radar/OpportunityPanel";
 import { calculateArbitrage, calculateCrossExchangeArbitrage } from "@/lib/exchanges";
 import { formatNetworkSummary, getMatchedNetworks, hasContractMismatch, summarizeExecutableNetworks } from "@/lib/networks";
 import { AggregatedOpportunityRow, OpportunityFilterKind, TransferStatusMap, buildFundingStream, buildOpportunityStream } from "@/lib/opportunities/aggregator";
+import { useDashboardFilters } from "@/lib/state/useFilters";
 import { ArbitrageOpportunity, NormalizedTicker, TransferStatus } from "@/lib/types";
 
 type ApiResponse = {
@@ -713,7 +715,7 @@ function getEdgeXContextReasons(ticker: NormalizedTicker | undefined) {
   return reasons.slice(0, 3);
 }
 
-export default function Home() {
+function HomeContent() {
   const [binanceSpotTickers, setBinanceSpotTickers] = useState<NormalizedTicker[]>([]);
   const [binanceFuturesTickers, setBinanceFuturesTickers] = useState<NormalizedTicker[]>([]);
   const [binancePerpEnabled, setBinancePerpEnabled] = useState(true);
@@ -763,11 +765,11 @@ export default function Home() {
   const [workflowCollapsed, setWorkflowCollapsed] = useState(true);
   const [filteredViewCollapsed, setFilteredViewCollapsed] = useState(true);
   const [showAllActionRows, setShowAllActionRows] = useState(false);
+  const [opportunityPanelLimit, setOpportunityPanelLimit] = useState(20);
   const [matrixCollapsed, setMatrixCollapsed] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
   const [showScrollTopButton, setShowScrollTopButton] = useState(false);
-  const [opportunityFilterKind, setOpportunityFilterKind] = useState<OpportunityFilterKind>("all");
-  const [opportunityExecutableOnly, setOpportunityExecutableOnly] = useState(true);
+  const dashboardFilters = useDashboardFilters();
   const workflowLogSignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -1692,22 +1694,39 @@ export default function Home() {
           ? "중간"
           : "낮음";
 
+  const { marketType, executableOnly, minGap, venues } = dashboardFilters;
+
   const filteredOpportunityRows = useMemo(() => {
     return aggregatedOpportunityRows.filter((row) => {
-      if (opportunityFilterKind !== "all" && row.kind !== opportunityFilterKind) {
+      if (marketType !== "all") {
+        const mappedKind = marketType === "domestic" ? "cex-cex" : marketType;
+        if (row.kind !== mappedKind) {
+          return false;
+        }
+      }
+
+      if (executableOnly && row.transferStatusConfig) {
+        const transferSymbol = row.opportunity.symbol.replace("/KRW", "");
+        const leftTransferStatus = row.transferStatusConfig.leftStatuses[transferSymbol];
+        const rightTransferStatus = row.transferStatusConfig.rightStatuses?.[transferSymbol];
+        if (getExecutionStatus(row.opportunity, leftTransferStatus, rightTransferStatus).label !== "실행 가능") {
+          return false;
+        }
+      }
+
+      const minGapValue = Number(minGap);
+      if (Number.isFinite(minGapValue) && row.opportunity.estimatedNetPct < minGapValue) {
         return false;
       }
 
-      if (!opportunityExecutableOnly || !row.transferStatusConfig) {
-        return true;
+      if (venues.length > 0) {
+        const matchesVenue = venues.some((venue) => row.exchangeFrom.includes(venue) || row.exchangeTo.includes(venue) || row.sourceTitle.includes(venue));
+        if (!matchesVenue) return false;
       }
 
-      const transferSymbol = row.opportunity.symbol.replace("/KRW", "");
-      const leftTransferStatus = row.transferStatusConfig.leftStatuses[transferSymbol];
-      const rightTransferStatus = row.transferStatusConfig.rightStatuses?.[transferSymbol];
-      return getExecutionStatus(row.opportunity, leftTransferStatus, rightTransferStatus).label === "실행 가능";
+      return true;
     });
-  }, [aggregatedOpportunityRows, opportunityExecutableOnly, opportunityFilterKind]);
+  }, [aggregatedOpportunityRows, executableOnly, marketType, minGap, venues]);
 
   const workflowTopCandidate = useMemo<WorkflowCandidate | null>(() => {
     const bestBinanceOpportunity = topBithumbBinance.find((opportunity) =>
@@ -2210,6 +2229,26 @@ export default function Home() {
           }}
         />
 
+        <div className="mb-6">
+          <OpportunityPanel
+            items={filteredOpportunityRows.slice(0, opportunityPanelLimit)}
+            minGap={dashboardFilters.minGap}
+            marketType={dashboardFilters.marketType}
+            executableOnly={dashboardFilters.executableOnly}
+            hiddenCount={Math.max(filteredOpportunityRows.length - opportunityPanelLimit, 0)}
+            shownCount={Math.min(opportunityPanelLimit, filteredOpportunityRows.length)}
+            totalCount={filteredOpportunityRows.length}
+            onSelect={(item) => setSelectedChart(getChartSelection(item.sourceTitle, item.opportunity))}
+            onMarketTypeChange={(value) => dashboardFilters.setMarketType(value)}
+            onExecutableOnlyChange={(checked) => {
+              dashboardFilters.setExecutableOnly(checked);
+              setShowAllActionRows(false);
+            }}
+            onMinGapChange={dashboardFilters.setMinGap}
+            onShowMore={() => setOpportunityPanelLimit((prev) => prev + 20)}
+          />
+        </div>
+
         <section id="filtered-view" className="rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-2xl shadow-slate-950/40">
           <div className="mb-5 rounded-xl border border-cyan-300/15 bg-[#121317] p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -2239,15 +2278,17 @@ export default function Home() {
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
                 <div>현재 필터</div>
                 <div className="mt-1 text-base font-semibold text-white">
-                  {opportunityFilterKind === "all"
+                  {dashboardFilters.marketType === "all"
                     ? "전체"
-                    : opportunityFilterKind === "basis"
+                    : dashboardFilters.marketType === "basis"
                       ? "현선갭"
-                      : opportunityFilterKind === "perp-perp"
+                      : dashboardFilters.marketType === "perp-perp"
                         ? "선선갭"
-                        : opportunityFilterKind === "cex-cex"
+                        : dashboardFilters.marketType === "domestic" || dashboardFilters.marketType === "cex-cex"
                           ? "국내↔해외 CEX"
-                          : "CEX-DEX"}
+                          : dashboardFilters.marketType === "funding"
+                            ? "펀비 차액"
+                            : "CEX-DEX"}
                 </div>
               </div>
               <CollapseButton collapsed={filteredViewCollapsed} onClick={() => setFilteredViewCollapsed((prev) => !prev)} />
@@ -2271,11 +2312,11 @@ export default function Home() {
                     key={filter.key}
                     type="button"
                     onClick={() => {
-                      setOpportunityFilterKind(filter.key as OpportunityFilterKind);
+                      dashboardFilters.setMarketType(filter.key as OpportunityFilterKind);
                       setShowAllActionRows(false);
                     }}
                     className={`rounded-full border px-4 py-2 text-sm transition ${
-                      opportunityFilterKind === filter.key
+                      dashboardFilters.marketType === filter.key
                         ? "border-cyan-400/30 bg-cyan-400/15 text-cyan-100"
                         : "border-white/10 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
                     }`}
@@ -2286,9 +2327,9 @@ export default function Home() {
                 <label className="ml-auto flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-sm text-slate-300">
                   <input
                     type="checkbox"
-                    checked={opportunityExecutableOnly}
+                    checked={dashboardFilters.executableOnly}
                     onChange={(event) => {
-                      setOpportunityExecutableOnly(event.target.checked);
+                      dashboardFilters.setExecutableOnly(event.target.checked);
                       setShowAllActionRows(false);
                     }}
                     className="accent-cyan-400"
@@ -2473,17 +2514,19 @@ export default function Home() {
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
               <div>현재 필터</div>
               <div className="mt-1 text-base font-semibold text-white">
-                {opportunityFilterKind === "all"
+                {dashboardFilters.marketType === "all"
                   ? "전체"
-                  : opportunityFilterKind === "basis"
+                  : dashboardFilters.marketType === "basis"
                     ? "현선갭"
-                    : opportunityFilterKind === "perp-perp"
+                    : dashboardFilters.marketType === "perp-perp"
                       ? "선선갭"
-                    : opportunityFilterKind === "cex-cex"
+                    : dashboardFilters.marketType === "domestic" || dashboardFilters.marketType === "cex-cex"
                       ? "국내↔해외 CEX"
-                      : "CEX-DEX"}
+                      : dashboardFilters.marketType === "funding"
+                        ? "펀비 차액"
+                        : "CEX-DEX"}
               </div>
-              <div className="mt-1 text-slate-500">{opportunityExecutableOnly ? "실행 가능만 보기" : "전체 상태 보기"}</div>
+              <div className="mt-1 text-slate-500">{dashboardFilters.executableOnly ? "실행 가능만 보기" : "전체 상태 보기"}</div>
             </div>
           </div>
 
@@ -2498,9 +2541,9 @@ export default function Home() {
               <button
                 key={filter.key}
                 type="button"
-                onClick={() => setOpportunityFilterKind(filter.key as OpportunityFilterKind)}
+                onClick={() => dashboardFilters.setMarketType(filter.key as OpportunityFilterKind)}
                 className={`rounded-full border px-4 py-2 text-sm transition ${
-                  opportunityFilterKind === filter.key
+                  dashboardFilters.marketType === filter.key
                     ? "border-cyan-400/30 bg-cyan-400/15 text-cyan-100"
                     : "border-white/10 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
                 }`}
@@ -2511,8 +2554,8 @@ export default function Home() {
             <label className="ml-auto flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-sm text-slate-300">
               <input
                 type="checkbox"
-                checked={opportunityExecutableOnly}
-                onChange={(event) => setOpportunityExecutableOnly(event.target.checked)}
+                checked={dashboardFilters.executableOnly}
+                onChange={(event) => dashboardFilters.setExecutableOnly(event.target.checked)}
                 className="accent-cyan-400"
               />
               실행 가능만 보기
@@ -4028,3 +4071,11 @@ function WithdrawalWorkflowSection({
   );
 }
 
+
+export default function Home() {
+  return (
+    <Suspense fallback={<main className="rounded-xl border border-white/10 bg-[#121317] p-6 text-sm text-slate-500">Loading dashboard…</main>}>
+      <HomeContent />
+    </Suspense>
+  );
+}
